@@ -2,22 +2,84 @@ import SwiftUI
 
 struct MenuBarMenuView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.openWindow) private var openWindow
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }()
 
     var body: some View {
         Section("Auto-Switch") {
             Toggle(
-                "Pause Auto-Switch",
+                "Auto-Switch",
                 isOn: Binding(
-                    get: { appState.isAutoSwitchPaused },
-                    set: { appState.setAutoSwitchPaused($0) }
+                    get: { appState.autoSwitchEnabled },
+                    set: { appState.setAutoSwitchEnabled($0) }
                 )
             )
+
+            Button("Pause 15 min") {
+                appState.pause(minutes: 15)
+            }
+            .disabled(!appState.autoSwitchEnabled)
+
+            Button("Pause 60 min") {
+                appState.pause(minutes: 60)
+            }
+            .disabled(!appState.autoSwitchEnabled)
+
+            if appState.isAutoSwitchPaused {
+                Button("Resume") {
+                    appState.resume()
+                }
+            }
+
+            if let pauseUntil = appState.pauseUntil, appState.isAutoSwitchPaused {
+                Text("Paused until \(Self.timeFormatter.string(from: pauseUntil))")
+                    .foregroundStyle(.secondary)
+            }
 
             Text("Last action: \(appState.lastAutoSwitchAction)")
 
             if let error = appState.lastAutoSwitchError {
                 Text("Error: \(error)")
                     .foregroundStyle(.red)
+            }
+        }
+
+        if appState.hasMappingConflicts {
+            Divider()
+
+            Section("Warnings") {
+                Label(
+                    "\(appState.mappingConflicts.count) mapping conflict(s): source missing or disabled",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .foregroundStyle(.orange)
+
+                SettingsLink {
+                    Text("Fix in Settings...")
+                }
+            }
+        }
+
+        Divider()
+
+        Section("Last switch") {
+            if let lastAction = appState.lastAction {
+                let targetName = appState.inputSourceName(for: lastAction.toInputSourceId)
+                Text("\(lastAction.deviceDisplayName) → \(targetName) (\(Self.timeFormatter.string(from: lastAction.timestamp)))")
+
+                if appState.canUndoLastSwitch {
+                    Button("Undo") {
+                        appState.undoLastSwitch()
+                    }
+                }
+            } else {
+                Text("No switch action yet.")
+                    .foregroundStyle(.secondary)
             }
         }
 
@@ -41,8 +103,13 @@ struct MenuBarMenuView: View {
 
         Section("Status") {
             Text(appState.permissionLine)
+            Text(appState.monitorLine)
             Text(appState.activeKeyboardLine)
             Text(appState.activeInputSourceLine)
+
+            Button("Open Debug") {
+                openWindow(id: "debug-log")
+            }
         }
 
         Section("Active Keyboard Device") {

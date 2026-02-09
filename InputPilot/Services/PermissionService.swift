@@ -1,7 +1,7 @@
 import Foundation
 import IOKit.hid
 
-final class PermissionService {
+final class PermissionService: PermissionServicing {
     func checkInputMonitoring() -> IOHIDAccessType {
         IOHIDCheckAccess(kIOHIDRequestTypeListenEvent)
     }

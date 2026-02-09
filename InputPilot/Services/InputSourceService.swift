@@ -4,7 +4,7 @@ import Carbon
 import OSLog
 #endif
 
-final class InputSourceService {
+final class InputSourceService: InputSourceServicing {
 #if DEBUG
     private let logger = Logger(subsystem: "InputPilot", category: "InputSourceService")
 #endif
@@ -13,23 +13,19 @@ final class InputSourceService {
         let filter: [String: Any] = [
             kTISPropertyInputSourceIsEnabled as String: kCFBooleanTrue as Any
         ]
+        return makeInputSourceInfos(from: inputSources(matching: filter))
+    }
 
-        let sources = inputSources(matching: filter)
-        var infos: [InputSourceInfo] = []
+    func listAllInputSources() -> [InputSourceInfo] {
+        makeInputSourceInfos(from: inputSources(matching: nil))
+    }
 
-        for source in sources {
-            guard let id = stringProperty(for: source, key: kTISPropertyInputSourceID) else {
-                continue
-            }
-
-            let name = stringProperty(for: source, key: kTISPropertyLocalizedName) ?? id
-            let isSelectable = boolProperty(for: source, key: kTISPropertyInputSourceIsSelectCapable)
-            infos.append(InputSourceInfo(id: id, name: name, isSelectable: isSelectable))
-        }
-
-        return infos.sorted { lhs, rhs in
-            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-        }
+    func existsEnabledInputSource(id: String) -> Bool {
+        let filter: [String: Any] = [
+            kTISPropertyInputSourceIsEnabled as String: kCFBooleanTrue as Any,
+            kTISPropertyInputSourceID as String: id
+        ]
+        return !inputSources(matching: filter).isEmpty
     }
 
     func currentInputSourceId() -> String? {
@@ -65,8 +61,26 @@ final class InputSourceService {
         return true
     }
 
-    private func inputSources(matching filter: [String: Any]) -> [TISInputSource] {
-        guard let unmanagedList = TISCreateInputSourceList(filter as CFDictionary, false) else {
+    private func makeInputSourceInfos(from sources: [TISInputSource]) -> [InputSourceInfo] {
+        var infos: [InputSourceInfo] = []
+
+        for source in sources {
+            guard let id = stringProperty(for: source, key: kTISPropertyInputSourceID) else {
+                continue
+            }
+
+            let name = stringProperty(for: source, key: kTISPropertyLocalizedName) ?? id
+            let isSelectable = boolProperty(for: source, key: kTISPropertyInputSourceIsSelectCapable)
+            infos.append(InputSourceInfo(id: id, name: name, isSelectable: isSelectable))
+        }
+
+        return infos.sorted { lhs, rhs in
+            lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+
+    private func inputSources(matching filter: [String: Any]?) -> [TISInputSource] {
+        guard let unmanagedList = TISCreateInputSourceList(filter as CFDictionary?, false) else {
             return []
         }
 

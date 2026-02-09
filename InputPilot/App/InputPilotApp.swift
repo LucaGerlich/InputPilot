@@ -10,6 +10,11 @@ struct InputPilotApp: App {
                 .environmentObject(appState)
         }
 
+        Window("Debug Log", id: "debug-log") {
+            DebugLogView()
+                .environmentObject(appState)
+        }
+
         Settings {
             SettingsView()
                 .environmentObject(appState)

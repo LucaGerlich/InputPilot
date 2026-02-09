@@ -4,11 +4,11 @@ import IOKit.hid
 import OSLog
 #endif
 
-final class HIDKeyboardMonitor {
-    typealias DeviceCallback = (ActiveKeyboardDevice) -> Void
+final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
+    typealias EventCallback = (ActiveKeyboardDevice, KeyboardEventKind) -> Void
 
     private var manager: IOHIDManager?
-    private var onDeviceDetected: DeviceCallback?
+    private var onEvent: EventCallback?
 
     private(set) var isRunning = false
     private(set) var lastStartError: IOReturn?
@@ -18,8 +18,8 @@ final class HIDKeyboardMonitor {
 #endif
 
     @discardableResult
-    func start(onDeviceDetected: @escaping DeviceCallback) -> Bool {
-        self.onDeviceDetected = onDeviceDetected
+    func start(onEvent: @escaping EventCallback) -> Bool {
+        self.onEvent = onEvent
 
         guard !isRunning else {
             debugLog("Start requested while already running.")
@@ -79,7 +79,7 @@ final class HIDKeyboardMonitor {
 
         self.manager = nil
         self.isRunning = false
-        self.onDeviceDetected = nil
+        self.onEvent = nil
         debugLog("HID monitor stopped.")
     }
 
@@ -97,17 +97,22 @@ final class HIDKeyboardMonitor {
         guard usagePage == UInt32(kHIDPage_KeyboardOrKeypad) else {
             return
         }
+        let usage = IOHIDElementGetUsage(element)
 
         let device = IOHIDElementGetDevice(element)
+        let transport = stringProperty(for: device, key: kIOHIDTransportKey)
+        let builtIn = boolProperty(for: device, key: kIOHIDBuiltInKey)
+            || isLikelyBuiltIn(transport: transport)
         let activeDevice = ActiveKeyboardDevice(
             vendorId: intProperty(for: device, key: kIOHIDVendorIDKey) ?? 0,
             productId: intProperty(for: device, key: kIOHIDProductIDKey) ?? 0,
             productName: stringProperty(for: device, key: kIOHIDProductKey),
-            transport: stringProperty(for: device, key: kIOHIDTransportKey),
-            locationId: intProperty(for: device, key: kIOHIDLocationIDKey)
+            transport: transport,
+            locationId: intProperty(for: device, key: kIOHIDLocationIDKey),
+            isBuiltIn: builtIn
         )
 
-        onDeviceDetected?(activeDevice)
+        onEvent?(activeDevice, .keyDown(isModifier: isModifierUsage(usage)))
     }
 
     private func intProperty(for device: IOHIDDevice, key: String) -> Int? {
@@ -120,6 +125,36 @@ final class HIDKeyboardMonitor {
 
     private func stringProperty(for device: IOHIDDevice, key: String) -> String? {
         IOHIDDeviceGetProperty(device, key as CFString) as? String
+    }
+
+    private func boolProperty(for device: IOHIDDevice, key: String) -> Bool {
+        guard let number = IOHIDDeviceGetProperty(device, key as CFString) as? NSNumber else {
+            return false
+        }
+
+        return number.boolValue
+    }
+
+    private func isLikelyBuiltIn(transport: String?) -> Bool {
+        guard let normalizedTransport = KeyboardFingerprint.normalizedTransport(transport) else {
+            return false
+        }
+
+        return normalizedTransport.contains("internal")
+            || normalizedTransport == "spi"
+            || normalizedTransport == "i2c"
+            || normalizedTransport == "ps2"
+    }
+
+    private func isModifierUsage(_ usage: UInt32) -> Bool {
+        let leftControl = UInt32(kHIDUsage_KeyboardLeftControl)
+        let rightGUI = UInt32(kHIDUsage_KeyboardRightGUI)
+        if (leftControl...rightGUI).contains(usage) {
+            return true
+        }
+
+        // Fn is not consistently exposed; 0x3F is commonly used when present.
+        return usage == 0x3F
     }
 
     private static let inputValueCallback: IOHIDValueCallback = { context, _, _, value in
