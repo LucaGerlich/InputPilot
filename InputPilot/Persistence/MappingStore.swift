@@ -1,7 +1,15 @@
 import Foundation
 
+@MainActor
 final class MappingStore: MappingStoring {
     private struct StoredMapping: Codable {
+        let profileId: String
+        let deviceKey: KeyboardDeviceKey
+        let inputSourceId: String?
+        let perDeviceFallbackInputSourceId: String?
+    }
+
+    private struct LegacyProfilelessStoredMapping: Codable {
         let deviceKey: KeyboardDeviceKey
         let inputSourceId: String?
         let perDeviceFallbackInputSourceId: String?
@@ -23,7 +31,10 @@ final class MappingStore: MappingStoring {
         var perDeviceFallbackInputSourceId: String?
     }
 
+    private typealias ProfileConfigurations = [String: [KeyboardDeviceKey: DeviceConfiguration]]
+
     private let defaults: UserDefaults
+    private let profileManager: ProfileManaging
     private let storageKey: String
     private let migrationVersionKey: String
     private let encoder = JSONEncoder()
@@ -31,10 +42,12 @@ final class MappingStore: MappingStoring {
 
     init(
         defaults: UserDefaults = .standard,
+        profileManager: ProfileManaging? = nil,
         storageKey: String = "keyboardDeviceInputSourceMappings",
         migrationVersionKey: String = "keyboardDeviceInputSourceMappingsMigrationV2Completed"
     ) {
         self.defaults = defaults
+        self.profileManager = profileManager ?? ProfileManager(defaults: defaults)
         self.storageKey = storageKey
         self.migrationVersionKey = migrationVersionKey
 
@@ -42,50 +55,63 @@ final class MappingStore: MappingStoring {
     }
 
     func getMapping(for deviceKey: KeyboardDeviceKey) -> String? {
-        loadConfigurations()[deviceKey]?.mappingInputSourceId
+        loadConfigurations(for: activeProfileId)[deviceKey]?.mappingInputSourceId
     }
 
     func setMapping(deviceKey: KeyboardDeviceKey, inputSourceId: String) {
-        var configurations = loadConfigurations()
-        var configuration = configurations[deviceKey] ?? DeviceConfiguration()
+        var allConfigurations = loadAllConfigurations()
+        var profileConfigurations = allConfigurations[activeProfileId] ?? [:]
+        var configuration = profileConfigurations[deviceKey] ?? DeviceConfiguration()
         configuration.mappingInputSourceId = normalizedInputSourceId(inputSourceId)
-        configurations[deviceKey] = configuration
-        saveConfigurations(configurations)
+        profileConfigurations[deviceKey] = configuration
+        allConfigurations[activeProfileId] = profileConfigurations
+        saveConfigurations(allConfigurations)
     }
 
     func getPerDeviceFallback(for deviceKey: KeyboardDeviceKey) -> String? {
-        loadConfigurations()[deviceKey]?.perDeviceFallbackInputSourceId
+        loadConfigurations(for: activeProfileId)[deviceKey]?.perDeviceFallbackInputSourceId
     }
 
     func setPerDeviceFallback(deviceKey: KeyboardDeviceKey, inputSourceId: String?) {
-        var configurations = loadConfigurations()
-        var configuration = configurations[deviceKey] ?? DeviceConfiguration()
+        var allConfigurations = loadAllConfigurations()
+        var profileConfigurations = allConfigurations[activeProfileId] ?? [:]
+        var configuration = profileConfigurations[deviceKey] ?? DeviceConfiguration()
         configuration.perDeviceFallbackInputSourceId = normalizedInputSourceId(inputSourceId)
-        configurations[deviceKey] = configuration
-        saveConfigurations(configurations)
+        profileConfigurations[deviceKey] = configuration
+        allConfigurations[activeProfileId] = profileConfigurations
+        saveConfigurations(allConfigurations)
     }
 
     func removeMapping(deviceKey: KeyboardDeviceKey) {
-        var configurations = loadConfigurations()
-        guard var configuration = configurations[deviceKey] else {
+        var allConfigurations = loadAllConfigurations()
+        guard var profileConfigurations = allConfigurations[activeProfileId],
+              var configuration = profileConfigurations[deviceKey] else {
             return
         }
 
         configuration.mappingInputSourceId = nil
-        configurations[deviceKey] = configuration
-        saveConfigurations(configurations)
+        profileConfigurations[deviceKey] = configuration
+        allConfigurations[activeProfileId] = profileConfigurations
+        saveConfigurations(allConfigurations)
+    }
+
+    func removeProfileData(profileId: String) {
+        let normalizedProfileId = normalizedProfileId(profileId)
+        var allConfigurations = loadAllConfigurations()
+        allConfigurations.removeValue(forKey: normalizedProfileId)
+        saveConfigurations(allConfigurations)
     }
 
     func allMappings() -> [KeyboardDeviceKey: String] {
-        loadConfigurations().compactMapValues(\.mappingInputSourceId)
+        loadConfigurations(for: activeProfileId).compactMapValues(\.mappingInputSourceId)
     }
 
     func allKnownDeviceKeys() -> [KeyboardDeviceKey] {
-        Array(loadConfigurations().keys)
+        Array(loadConfigurations(for: activeProfileId).keys)
     }
 
     func validateMappings(availableEnabledIds: Set<String>) -> [MappingConflict] {
-        loadConfigurations()
+        loadConfigurations(for: activeProfileId)
             .compactMap { deviceKey, configuration -> MappingConflict? in
                 guard let sourceId = configuration.mappingInputSourceId else {
                     return nil
@@ -110,7 +136,16 @@ final class MappingStore: MappingStoring {
             }
     }
 
-    private func loadConfigurations() -> [KeyboardDeviceKey: DeviceConfiguration] {
+    private var activeProfileId: String {
+        normalizedProfileId(profileManager.activeProfileId)
+    }
+
+    private func loadConfigurations(for profileId: String) -> [KeyboardDeviceKey: DeviceConfiguration] {
+        let normalizedProfileId = normalizedProfileId(profileId)
+        return loadAllConfigurations()[normalizedProfileId] ?? [:]
+    }
+
+    private func loadAllConfigurations() -> ProfileConfigurations {
         guard let data = defaults.data(forKey: storageKey) else {
             return [:]
         }
@@ -119,23 +154,22 @@ final class MappingStore: MappingStoring {
             return [:]
         }
 
-        return configurations(from: entries)
-    }
-
-    private func configurations(from entries: [StoredMapping]) -> [KeyboardDeviceKey: DeviceConfiguration] {
-        var configurations: [KeyboardDeviceKey: DeviceConfiguration] = [:]
+        var allConfigurations: ProfileConfigurations = [:]
         for entry in entries {
+            let profileId = normalizedProfileId(entry.profileId)
+            var profileConfigurations = allConfigurations[profileId] ?? [:]
             let configuration = DeviceConfiguration(
                 mappingInputSourceId: normalizedInputSourceId(entry.inputSourceId),
                 perDeviceFallbackInputSourceId: normalizedInputSourceId(entry.perDeviceFallbackInputSourceId)
             )
 
             if configuration.mappingInputSourceId != nil || configuration.perDeviceFallbackInputSourceId != nil {
-                configurations[entry.deviceKey] = configuration
+                profileConfigurations[entry.deviceKey] = configuration
+                allConfigurations[profileId] = profileConfigurations
             }
         }
 
-        return configurations
+        return allConfigurations
     }
 
     private func decodeStoredMappings(from data: Data) -> [StoredMapping]? {
@@ -143,9 +177,21 @@ final class MappingStore: MappingStoring {
             return entries
         }
 
+        if let legacyEntries = try? decoder.decode([LegacyProfilelessStoredMapping].self, from: data) {
+            return legacyEntries.map { entry in
+                StoredMapping(
+                    profileId: Profile.defaultProfileId,
+                    deviceKey: entry.deviceKey,
+                    inputSourceId: entry.inputSourceId,
+                    perDeviceFallbackInputSourceId: entry.perDeviceFallbackInputSourceId
+                )
+            }
+        }
+
         if let legacyEntries = try? decoder.decode([LegacyFlatStoredMapping].self, from: data) {
             return legacyEntries.map { legacyEntry in
                 StoredMapping(
+                    profileId: Profile.defaultProfileId,
                     deviceKey: KeyboardDeviceKey(
                         vendorId: legacyEntry.vendorId,
                         productId: legacyEntry.productId,
@@ -163,23 +209,32 @@ final class MappingStore: MappingStoring {
         return nil
     }
 
-    private func saveConfigurations(_ configurations: [KeyboardDeviceKey: DeviceConfiguration]) {
-        let entries = configurations
-            .compactMap { deviceKey, configuration -> StoredMapping? in
-                let mappingInputSourceId = normalizedInputSourceId(configuration.mappingInputSourceId)
-                let perDeviceFallbackInputSourceId = normalizedInputSourceId(configuration.perDeviceFallbackInputSourceId)
+    private func saveConfigurations(_ allConfigurations: ProfileConfigurations) {
+        let entries = allConfigurations
+            .flatMap { profileId, profileConfigurations in
+                profileConfigurations.compactMap { deviceKey, configuration -> StoredMapping? in
+                    let mappingInputSourceId = normalizedInputSourceId(configuration.mappingInputSourceId)
+                    let perDeviceFallbackInputSourceId = normalizedInputSourceId(configuration.perDeviceFallbackInputSourceId)
 
-                guard mappingInputSourceId != nil || perDeviceFallbackInputSourceId != nil else {
-                    return nil
+                    guard mappingInputSourceId != nil || perDeviceFallbackInputSourceId != nil else {
+                        return nil
+                    }
+
+                    return StoredMapping(
+                        profileId: normalizedProfileId(profileId),
+                        deviceKey: deviceKey,
+                        inputSourceId: mappingInputSourceId,
+                        perDeviceFallbackInputSourceId: perDeviceFallbackInputSourceId
+                    )
+                }
+            }
+            .sorted { lhs, rhs in
+                if lhs.profileId == rhs.profileId {
+                    return lhs.deviceKey.id < rhs.deviceKey.id
                 }
 
-                return StoredMapping(
-                    deviceKey: deviceKey,
-                    inputSourceId: mappingInputSourceId,
-                    perDeviceFallbackInputSourceId: perDeviceFallbackInputSourceId
-                )
+                return lhs.profileId < rhs.profileId
             }
-            .sorted { $0.deviceKey.id < $1.deviceKey.id }
 
         guard let data = try? encoder.encode(entries) else {
             return
@@ -202,8 +257,18 @@ final class MappingStore: MappingStoring {
             return
         }
 
-        let configurations = configurations(from: entries)
-        saveConfigurations(configurations)
+        var allConfigurations: ProfileConfigurations = [:]
+        for entry in entries {
+            let profileId = normalizedProfileId(entry.profileId)
+            var profileConfigurations = allConfigurations[profileId] ?? [:]
+            profileConfigurations[entry.deviceKey] = DeviceConfiguration(
+                mappingInputSourceId: normalizedInputSourceId(entry.inputSourceId),
+                perDeviceFallbackInputSourceId: normalizedInputSourceId(entry.perDeviceFallbackInputSourceId)
+            )
+            allConfigurations[profileId] = profileConfigurations
+        }
+
+        saveConfigurations(allConfigurations)
     }
 
     private func inferBuiltIn(transport: String?) -> Bool {
@@ -223,5 +288,13 @@ final class MappingStore: MappingStoring {
         }
 
         return inputSourceId
+    }
+
+    private func normalizedProfileId(_ profileId: String?) -> String {
+        guard let profileId, !profileId.isEmpty else {
+            return Profile.defaultProfileId
+        }
+
+        return profileId
     }
 }

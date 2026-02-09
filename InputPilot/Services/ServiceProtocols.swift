@@ -23,12 +23,26 @@ protocol InputSourceServicing: AnyObject {
     func selectInputSource(id: String) -> Bool
 }
 
+@MainActor
+protocol ProfileManaging: AnyObject {
+    var profiles: [Profile] { get }
+    var activeProfileId: String { get }
+    @discardableResult
+    func createProfile(name: String) -> Profile
+    func renameProfile(id: String, name: String)
+    @discardableResult
+    func deleteProfile(id: String) -> Bool
+    func setActiveProfile(id: String)
+}
+
+@MainActor
 protocol MappingStoring: AnyObject {
     func getMapping(for deviceKey: KeyboardDeviceKey) -> String?
     func setMapping(deviceKey: KeyboardDeviceKey, inputSourceId: String)
     func getPerDeviceFallback(for deviceKey: KeyboardDeviceKey) -> String?
     func setPerDeviceFallback(deviceKey: KeyboardDeviceKey, inputSourceId: String?)
     func removeMapping(deviceKey: KeyboardDeviceKey)
+    func removeProfileData(profileId: String)
     func allMappings() -> [KeyboardDeviceKey: String]
     func allKnownDeviceKeys() -> [KeyboardDeviceKey]
     func validateMappings(availableEnabledIds: Set<String>) -> [MappingConflict]
@@ -45,6 +59,25 @@ protocol DebugLogServicing: AnyObject {
     func logWarn(category: String, message: String)
     func logError(category: String, message: String)
     func export() -> String
+}
+
+protocol GlobalHotkeyServicing: AnyObject {
+    func setHandler(_ handler: @escaping (HotkeyAction) -> Void)
+    func register(shortcuts: [HotkeyAction: KeyCombo]) -> [HotkeyAction: String]
+    func unregisterAll()
+}
+
+@MainActor
+protocol TemporaryOverrideStoring: AnyObject {
+    func setOverride(
+        deviceFingerprintKey: String,
+        inputSourceId: String,
+        expiresAt: Date?,
+        persistAcrossLaunch: Bool
+    )
+    func temporaryOverride(for deviceFingerprintKey: String, now: Date) -> TemporaryOverride?
+    func clearOverride(for deviceFingerprintKey: String)
+    func clearExpired(now: Date)
 }
 
 struct SystemClock: ClockProviding {

@@ -93,6 +93,70 @@ final class MockInputSourceService: InputSourceServicing {
 }
 
 @MainActor
+final class MockProfileManager: ProfileManaging {
+    private(set) var profiles: [Profile]
+    private(set) var activeProfileId: String
+
+    init(
+        profiles: [Profile]? = nil,
+        activeProfileId: String? = nil
+    ) {
+        let resolvedProfiles = profiles ?? Profile.defaultProfiles
+        let resolvedActiveProfileId = activeProfileId ?? Profile.defaultProfileId
+
+        self.profiles = resolvedProfiles
+        if resolvedProfiles.contains(where: { $0.id == resolvedActiveProfileId }) {
+            self.activeProfileId = resolvedActiveProfileId
+        } else {
+            self.activeProfileId = resolvedProfiles.first?.id ?? Profile.defaultProfileId
+        }
+    }
+
+    @discardableResult
+    func createProfile(name: String) -> Profile {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let profileName = trimmedName.isEmpty ? "Profile" : trimmedName
+        let profile = Profile(id: UUID().uuidString.lowercased(), name: profileName, createdAt: Date())
+        profiles.append(profile)
+        return profile
+    }
+
+    func renameProfile(id: String, name: String) {
+        guard let index = profiles.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            return
+        }
+
+        profiles[index].name = trimmedName
+    }
+
+    @discardableResult
+    func deleteProfile(id: String) -> Bool {
+        guard profiles.count > 1, let index = profiles.firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+
+        profiles.remove(at: index)
+        if activeProfileId == id {
+            activeProfileId = profiles.first?.id ?? Profile.defaultProfileId
+        }
+        return true
+    }
+
+    func setActiveProfile(id: String) {
+        guard profiles.contains(where: { $0.id == id }) else {
+            return
+        }
+
+        activeProfileId = id
+    }
+}
+
+@MainActor
 final class MockMappingStore: MappingStoring {
     var mappings: [KeyboardDeviceKey: String] = [:]
     var perDeviceFallbacks: [KeyboardDeviceKey: String] = [:]
@@ -121,6 +185,12 @@ final class MockMappingStore: MappingStoring {
         mappings.removeValue(forKey: deviceKey)
     }
 
+    func removeProfileData(profileId: String) {
+        _ = profileId
+        mappings.removeAll()
+        perDeviceFallbacks.removeAll()
+    }
+
     func allMappings() -> [KeyboardDeviceKey: String] {
         mappings
     }
@@ -141,6 +211,54 @@ final class MockMappingStore: MappingStoring {
                 mappedSourceId: mappedId,
                 reason: .missingOrDisabled
             )
+        }
+    }
+}
+
+@MainActor
+final class MockTemporaryOverrideStore: TemporaryOverrideStoring {
+    var overridesByFingerprintKey: [String: TemporaryOverride] = [:]
+    private(set) var persistedKeys: Set<String> = []
+
+    func setOverride(
+        deviceFingerprintKey: String,
+        inputSourceId: String,
+        expiresAt: Date?,
+        persistAcrossLaunch: Bool
+    ) {
+        let overrideValue = TemporaryOverride(
+            deviceFingerprintKey: deviceFingerprintKey,
+            inputSourceId: inputSourceId,
+            expiresAt: expiresAt
+        )
+        overridesByFingerprintKey[deviceFingerprintKey] = overrideValue
+
+        if persistAcrossLaunch, expiresAt != nil {
+            persistedKeys.insert(deviceFingerprintKey)
+        } else {
+            persistedKeys.remove(deviceFingerprintKey)
+        }
+    }
+
+    func temporaryOverride(for deviceFingerprintKey: String, now: Date) -> TemporaryOverride? {
+        clearExpired(now: now)
+        return overridesByFingerprintKey[deviceFingerprintKey]
+    }
+
+    func clearOverride(for deviceFingerprintKey: String) {
+        overridesByFingerprintKey.removeValue(forKey: deviceFingerprintKey)
+        persistedKeys.remove(deviceFingerprintKey)
+    }
+
+    func clearExpired(now: Date) {
+        let expiredKeys = overridesByFingerprintKey
+            .filter { _, overrideValue in
+                overrideValue.isExpired(at: now)
+            }
+            .map(\.key)
+        for key in expiredKeys {
+            overridesByFingerprintKey.removeValue(forKey: key)
+            persistedKeys.remove(key)
         }
     }
 }

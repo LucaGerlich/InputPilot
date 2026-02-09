@@ -366,6 +366,142 @@ struct AppStateAutoSwitchTests {
     }
 
     @Test
+    func temporaryOverrideHasPrecedenceOverMappingAndFallback() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let device = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 832,
+            productName: "Apple Keyboard",
+            transport: "USB",
+            locationId: 123
+        )
+        let deviceKey = KeyboardDeviceKey(device: device)
+        let overrideSourceId = "com.apple.keylayout.French"
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true),
+            InputSourceInfo(id: overrideSourceId, name: "French", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+
+        let mappingStore = MockMappingStore()
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.US")
+        mappingStore.setPerDeviceFallback(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.German")
+
+        let temporaryOverrideStore = MockTemporaryOverrideStore()
+        temporaryOverrideStore.setOverride(
+            deviceFingerprintKey: deviceKey.primaryIdentifier,
+            inputSourceId: overrideSourceId,
+            expiresAt: nil,
+            persistAcrossLaunch: false
+        )
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            temporaryOverrideStore: temporaryOverrideStore,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        keyboardMonitor.emit(device)
+        await waitFor {
+            !inputSourceService.selectCalls.isEmpty
+        }
+
+        #expect(appState.activeKeyboardDevice == device)
+        #expect(inputSourceService.selectCalls == [overrideSourceId])
+    }
+
+    @Test
+    func expiredTemporaryOverrideFallsBackToMapping() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let clock = ImmediateClock()
+        let device = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 832,
+            productName: "Apple Keyboard",
+            transport: "USB",
+            locationId: 123
+        )
+        let deviceKey = KeyboardDeviceKey(device: device)
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.French", name: "French", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+
+        let mappingStore = MockMappingStore()
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.US")
+
+        let temporaryOverrideStore = MockTemporaryOverrideStore()
+        temporaryOverrideStore.setOverride(
+            deviceFingerprintKey: deviceKey.primaryIdentifier,
+            inputSourceId: "com.apple.keylayout.French",
+            expiresAt: clock.now.addingTimeInterval(1),
+            persistAcrossLaunch: true
+        )
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            temporaryOverrideStore: temporaryOverrideStore,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: clock
+        )
+
+        keyboardMonitor.emit(device)
+        await waitFor {
+            inputSourceService.selectCalls.count == 1
+        }
+        #expect(inputSourceService.selectCalls == ["com.apple.keylayout.French"])
+
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+        appState.refreshInputSourcesNow()
+        clock.advance(by: .seconds(2))
+
+        keyboardMonitor.emit(device)
+        await waitFor {
+            inputSourceService.selectCalls.count == 2
+        }
+
+        #expect(inputSourceService.selectCalls == [
+            "com.apple.keylayout.French",
+            "com.apple.keylayout.US"
+        ])
+        #expect(temporaryOverrideStore.temporaryOverride(for: deviceKey.primaryIdentifier, now: clock.now) == nil)
+    }
+
+    @Test
     func detectsConflictsOnLaunchAndRefresh() throws {
         let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -533,6 +669,84 @@ struct AppStateAutoSwitchTests {
 
         #expect(inputSourceService.selectCalls == ["com.apple.keylayout.German"])
         #expect(appState.activeKeyboardDevice == secondDevice)
+    }
+
+    @Test
+    func switchingProfileChangesEffectiveMapping() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let profileManager = ProfileManager(
+            defaults: defaults,
+            profilesStorageKey: "profiles.switching",
+            activeProfileStorageKey: "profiles.switching.active"
+        )
+        let mappingStore = MappingStore(
+            defaults: defaults,
+            profileManager: profileManager,
+            storageKey: "mappings.switching",
+            migrationVersionKey: "mappings.switching.migration"
+        )
+        let clock = ImmediateClock()
+
+        let device = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 832,
+            productName: "Apple Keyboard",
+            transport: "USB",
+            locationId: 123
+        )
+        let deviceKey = KeyboardDeviceKey(device: device)
+
+        profileManager.setActiveProfile(id: Profile.defaultProfileId)
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.US")
+
+        profileManager.setActiveProfile(id: Profile.codingProfileId)
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.German")
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.US"
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: clock,
+            profileManager: profileManager
+        )
+
+        keyboardMonitor.emit(device)
+        await waitFor {
+            inputSourceService.selectCalls.count == 1
+        }
+        #expect(inputSourceService.selectCalls == ["com.apple.keylayout.German"])
+        #expect(appState.activeProfileId == Profile.codingProfileId)
+
+        clock.advance(by: .seconds(2))
+        appState.setActiveProfile(Profile.defaultProfileId)
+
+        await waitFor {
+            inputSourceService.selectCalls.count == 2
+        }
+        #expect(inputSourceService.selectCalls == [
+            "com.apple.keylayout.German",
+            "com.apple.keylayout.US"
+        ])
+        #expect(appState.activeProfileId == Profile.defaultProfileId)
     }
 
     private func waitFor(

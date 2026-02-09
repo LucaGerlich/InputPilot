@@ -14,6 +14,8 @@ final class AppState: ObservableObject {
     private static let inputSourcePollIntervalSeconds: TimeInterval = 6
 
     @Published private(set) var status = InputStatusSnapshot.placeholder
+    @Published private(set) var profiles: [Profile]
+    @Published private(set) var activeProfileId: String
     @Published private(set) var activeKeyboardDevice: ActiveKeyboardDevice?
     @Published private(set) var currentInputSourceId: String?
     @Published private(set) var currentInputSourceName: String?
@@ -27,6 +29,10 @@ final class AppState: ObservableObject {
     @Published private(set) var pauseUntil: Date?
     @Published private(set) var lastAction: SwitchAction?
     @Published private(set) var previousInputSourceIdBeforeLastSwitch: String?
+    @Published private(set) var activeTemporaryOverride: TemporaryOverride?
+    @Published private(set) var hotkeyAssignments: [HotkeyAction: KeyCombo] = [:]
+    @Published private(set) var hotkeyStatusLine = "Global hotkeys are unavailable."
+    @Published private(set) var hotkeyRegistrationError: String?
     @Published private(set) var debugLogEntries: [LogEntry] = []
     @Published private(set) var lastAutoSwitchAction = "No auto-switch action yet."
     @Published private(set) var lastAutoSwitchError: String?
@@ -34,7 +40,10 @@ final class AppState: ObservableObject {
     private let permissionService: PermissionServicing
     private let hidKeyboardMonitor: HIDKeyboardMonitoring
     private let inputSourceService: InputSourceServicing
+    private let profileManager: ProfileManaging
     private let mappingStore: MappingStoring
+    private let temporaryOverrideStore: TemporaryOverrideStoring
+    private let globalHotkeyService: GlobalHotkeyServicing
     private let appSettingsStore: AppSettingsStore
     private let clock: ClockProviding
     private let debugLogService: DebugLogServicing
@@ -53,7 +62,10 @@ final class AppState: ObservableObject {
         permissionService: PermissionServicing,
         hidKeyboardMonitor: HIDKeyboardMonitoring,
         inputSourceService: InputSourceServicing,
+        profileManager: ProfileManaging,
         mappingStore: MappingStoring,
+        temporaryOverrideStore: TemporaryOverrideStoring? = nil,
+        globalHotkeyService: GlobalHotkeyServicing,
         appSettingsStore: AppSettingsStore,
         clock: ClockProviding,
         debugLogService: DebugLogServicing
@@ -61,11 +73,16 @@ final class AppState: ObservableObject {
         self.permissionService = permissionService
         self.hidKeyboardMonitor = hidKeyboardMonitor
         self.inputSourceService = inputSourceService
+        self.profileManager = profileManager
         self.mappingStore = mappingStore
+        self.temporaryOverrideStore = temporaryOverrideStore ?? TemporaryOverrideStore()
+        self.globalHotkeyService = globalHotkeyService
         self.appSettingsStore = appSettingsStore
         self.clock = clock
         self.debugLogService = debugLogService
         self.switchController = SwitchController(clock: clock)
+        self.profiles = profileManager.profiles
+        self.activeProfileId = profileManager.activeProfileId
         self.autoSwitchEnabled = appSettingsStore.bool(
             forKey: Self.autoSwitchEnabledDefaultsKey,
             default: true
@@ -75,11 +92,15 @@ final class AppState: ObservableObject {
             appSettingsStore.string(forKey: Self.globalFallbackInputSourceIdDefaultsKey)
         )
         self.debugLogEntries = debugLogService.entries
+        self.hotkeyAssignments = loadPersistedHotkeyAssignments()
 
         seedKnownDevicesFromMappings()
+        self.temporaryOverrideStore.clearExpired(now: clock.now)
+        configureGlobalHotkeys()
         refreshPauseStateIfNeeded()
         refreshPermissionStatus()
         refreshInputSourceState()
+        refreshActiveTemporaryOverride()
         startPermissionMonitoring()
 
         if !isAutoSwitchActive {
@@ -92,11 +113,14 @@ final class AppState: ObservableObject {
     }
 
     convenience init() {
+        let profileManager = ProfileManager()
         self.init(
             permissionService: PermissionService(),
             hidKeyboardMonitor: HIDKeyboardMonitor(),
             inputSourceService: InputSourceService(),
-            mappingStore: MappingStore(),
+            profileManager: profileManager,
+            mappingStore: MappingStore(profileManager: profileManager),
+            globalHotkeyService: GlobalHotkeyService(),
             appSettingsStore: AppSettingsStore(),
             clock: SystemClock(),
             debugLogService: DebugLogService()
@@ -108,14 +132,24 @@ final class AppState: ObservableObject {
         hidKeyboardMonitor: HIDKeyboardMonitoring,
         inputSourceService: InputSourceServicing,
         mappingStore: MappingStoring,
+        temporaryOverrideStore: TemporaryOverrideStoring? = nil,
+        globalHotkeyService: GlobalHotkeyServicing? = nil,
         appSettingsStore: AppSettingsStore,
-        clock: ClockProviding
+        clock: ClockProviding,
+        profileManager: ProfileManaging? = nil
     ) {
+        let resolvedProfileManager = profileManager ?? ProfileManager()
+        let resolvedTemporaryOverrideStore = temporaryOverrideStore
+            ?? TemporaryOverrideStore(defaults: appSettingsStore.userDefaults)
+        let resolvedGlobalHotkeyService = globalHotkeyService ?? NoOpGlobalHotkeyService()
         self.init(
             permissionService: permissionService,
             hidKeyboardMonitor: hidKeyboardMonitor,
             inputSourceService: inputSourceService,
+            profileManager: resolvedProfileManager,
             mappingStore: mappingStore,
+            temporaryOverrideStore: resolvedTemporaryOverrideStore,
+            globalHotkeyService: resolvedGlobalHotkeyService,
             appSettingsStore: appSettingsStore,
             clock: clock,
             debugLogService: DebugLogService()
@@ -203,12 +237,41 @@ final class AppState: ObservableObject {
         return nil
     }
 
+    var activeProfileName: String {
+        profiles.first(where: { $0.id == activeProfileId })?.name ?? "Unknown"
+    }
+
+    var canDeleteActiveProfile: Bool {
+        profiles.count > 1
+    }
+
     var selectableInputSources: [InputSourceInfo] {
         enabledInputSources.filter { $0.isSelectable }
     }
 
     var hasMappingConflicts: Bool {
         !mappingConflicts.isEmpty
+    }
+
+    var hasActiveTemporaryOverride: Bool {
+        activeTemporaryOverride != nil
+    }
+
+    var hotkeyActions: [HotkeyAction] {
+        HotkeyAction.allCases
+    }
+
+    func availableHotkeyCombos(for action: HotkeyAction) -> [KeyCombo] {
+        var combos = KeyCombo.predefinedCombos
+        let currentCombo = hotkeyAssignments[action] ?? action.defaultKeyCombo
+        if !combos.contains(currentCombo) {
+            combos.insert(currentCombo, at: 0)
+        }
+        return combos
+    }
+
+    func hotkeyCombo(for action: HotkeyAction) -> KeyCombo {
+        hotkeyAssignments[action] ?? action.defaultKeyCombo
     }
 
     func requestInputMonitoringPermission() {
@@ -245,6 +308,49 @@ final class AppState: ObservableObject {
 
     func logConflictWarning(_ message: String) {
         logWarn(category: "conflict", message: message)
+    }
+
+    func setActiveProfile(_ profileId: String) {
+        guard profileId != activeProfileId else {
+            return
+        }
+
+        guard profiles.contains(where: { $0.id == profileId }) else {
+            return
+        }
+
+        profileManager.setActiveProfile(id: profileId)
+        handleProfileContextChange(actionMessage: "Switched profile to \(activeProfileName).")
+    }
+
+    func createProfile(named name: String) {
+        let profile = profileManager.createProfile(name: name)
+        profileManager.setActiveProfile(id: profile.id)
+        handleProfileContextChange(actionMessage: "Created profile \(profile.name).")
+    }
+
+    func renameActiveProfile(to name: String) {
+        profileManager.renameProfile(id: activeProfileId, name: name)
+        refreshProfileState()
+        recordAction("Renamed active profile to \(activeProfileName).")
+    }
+
+    func deleteActiveProfile() {
+        deleteProfile(activeProfileId)
+    }
+
+    func deleteProfile(_ profileId: String) {
+        guard let profileName = profiles.first(where: { $0.id == profileId })?.name else {
+            return
+        }
+
+        guard profileManager.deleteProfile(id: profileId) else {
+            recordFailure("Cannot delete profile: at least one profile must remain.")
+            return
+        }
+
+        mappingStore.removeProfileData(profileId: profileId)
+        handleProfileContextChange(actionMessage: "Deleted profile \(profileName).")
     }
 
     func setAutoSwitchEnabled(_ enabled: Bool) {
@@ -302,6 +408,19 @@ final class AppState: ObservableObject {
         }
     }
 
+    func setHotkeyCombo(_ combo: KeyCombo, for action: HotkeyAction) {
+        if let conflictingAction = hotkeyAssignments.first(where: { $0.key != action && $0.value == combo })?.key {
+            hotkeyRegistrationError = "Shortcut conflict: \(combo.displayName) is already used for \(conflictingAction.title)."
+            hotkeyStatusLine = "Global hotkeys need attention."
+            return
+        }
+
+        hotkeyAssignments[action] = combo
+        persistHotkeyCombo(combo, for: action)
+        applyGlobalHotkeys()
+        recordAction("Updated hotkey for \(action.title) to \(combo.displayName).")
+    }
+
     func selectInputSource(_ id: String) {
         let sourceName = inputSourceDisplayName(for: id)
 
@@ -331,6 +450,25 @@ final class AppState: ObservableObject {
         self.lastAction = nil
         clearLastError()
         recordAction("Undid last switch: \(lastAction.deviceDisplayName) -> \(previousSourceName).")
+    }
+
+    func useCurrentInputSourceForActiveDeviceMapping() {
+        guard let deviceKey = activeDeviceKeyForTemporaryOverride() else {
+            recordFailure("Cannot map current source: no active keyboard device.")
+            return
+        }
+
+        guard let currentInputSourceId else {
+            recordFailure("Cannot map current source: no active input source.")
+            return
+        }
+
+        guard inputSourceService.existsEnabledInputSource(id: currentInputSourceId) else {
+            recordFailure("Cannot map current source: current input source is not enabled.")
+            return
+        }
+
+        setMapping(for: deviceKey, inputSourceId: currentInputSourceId)
     }
 
     func mappedInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
@@ -373,6 +511,84 @@ final class AppState: ObservableObject {
         }
 
         setGlobalFallbackInputSourceId(currentInputSourceId)
+    }
+
+    func lockCurrentInputSourceForActiveKeyboardUntilRestart() {
+        guard let deviceKey = activeDeviceKeyForTemporaryOverride() else {
+            recordFailure("Cannot set temporary lock: no active keyboard.")
+            return
+        }
+
+        guard let currentInputSourceId else {
+            recordFailure("Cannot set temporary lock: no current input source.")
+            return
+        }
+
+        guard inputSourceService.existsEnabledInputSource(id: currentInputSourceId) else {
+            recordFailure("Cannot set temporary lock: current input source is not enabled.")
+            return
+        }
+
+        temporaryOverrideStore.setOverride(
+            deviceFingerprintKey: deviceKey.primaryIdentifier,
+            inputSourceId: currentInputSourceId,
+            expiresAt: nil,
+            persistAcrossLaunch: false
+        )
+        refreshActiveTemporaryOverride(for: deviceKey)
+        clearLastError()
+        recordAction(
+            "Locked \(deviceTitle(for: deviceKey)) to \(inputSourceDisplayName(for: currentInputSourceId)) until restart."
+        )
+        evaluateSwitch(for: deviceKey, eventKind: .deviceStabilized)
+    }
+
+    func lockCurrentInputSourceForActiveKeyboardUntilEndOfDay() {
+        guard let deviceKey = activeDeviceKeyForTemporaryOverride() else {
+            recordFailure("Cannot set temporary lock: no active keyboard.")
+            return
+        }
+
+        guard let currentInputSourceId else {
+            recordFailure("Cannot set temporary lock: no current input source.")
+            return
+        }
+
+        guard inputSourceService.existsEnabledInputSource(id: currentInputSourceId) else {
+            recordFailure("Cannot set temporary lock: current input source is not enabled.")
+            return
+        }
+
+        guard let endOfToday = endOfToday(from: clock.now), endOfToday > clock.now else {
+            recordFailure("Cannot set temporary lock: end-of-day timestamp is not valid.")
+            return
+        }
+
+        temporaryOverrideStore.setOverride(
+            deviceFingerprintKey: deviceKey.primaryIdentifier,
+            inputSourceId: currentInputSourceId,
+            expiresAt: endOfToday,
+            persistAcrossLaunch: true
+        )
+        refreshActiveTemporaryOverride(for: deviceKey)
+        clearLastError()
+        recordAction(
+            "Locked \(deviceTitle(for: deviceKey)) to \(inputSourceDisplayName(for: currentInputSourceId)) until \(formattedTime(endOfToday))."
+        )
+        evaluateSwitch(for: deviceKey, eventKind: .deviceStabilized)
+    }
+
+    func clearTemporaryOverrideForActiveKeyboard() {
+        guard let deviceKey = activeDeviceKeyForTemporaryOverride() else {
+            recordFailure("Cannot clear temporary lock: no active keyboard.")
+            return
+        }
+
+        temporaryOverrideStore.clearOverride(for: deviceKey.primaryIdentifier)
+        refreshActiveTemporaryOverride(for: deviceKey)
+        clearLastError()
+        recordAction("Cleared temporary lock for \(deviceTitle(for: deviceKey)).")
+        evaluateSwitch(for: deviceKey, eventKind: .deviceStabilized)
     }
 
     func setMapping(for deviceKey: KeyboardDeviceKey, inputSourceId: String?) {
@@ -420,12 +636,14 @@ final class AppState: ObservableObject {
     func forgetDevice(_ deviceKey: KeyboardDeviceKey) {
         mappingStore.removeMapping(deviceKey: deviceKey)
         mappingStore.setPerDeviceFallback(deviceKey: deviceKey, inputSourceId: nil)
+        temporaryOverrideStore.clearOverride(for: deviceKey.primaryIdentifier)
         detectedDevicesByKey.removeValue(forKey: deviceKey)
         knownDeviceKeys.removeAll { $0 == deviceKey }
         if conflictFixTargetDeviceKey == deviceKey {
             conflictFixTargetDeviceKey = nil
         }
         refreshMappingConflicts(usingEnabledSources: enabledInputSources)
+        refreshActiveTemporaryOverride()
         recordAction("Forgot device: \(deviceTitle(for: deviceKey)).")
         clearLastError()
     }
@@ -491,6 +709,91 @@ final class AppState: ObservableObject {
 
     func updateStatus(_ status: InputStatusSnapshot) {
         self.status = status
+    }
+
+    private func handleProfileContextChange(actionMessage: String? = nil) {
+        refreshProfileState()
+        seedKnownDevicesFromMappings()
+        refreshMappingConflicts(usingEnabledSources: enabledInputSources)
+        refreshActiveTemporaryOverride()
+
+        if let activeKeyboardDevice {
+            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
+        }
+
+        if let actionMessage {
+            recordAction(actionMessage)
+        }
+    }
+
+    private func refreshProfileState() {
+        profiles = profileManager.profiles
+        activeProfileId = profileManager.activeProfileId
+    }
+
+    private func configureGlobalHotkeys() {
+        globalHotkeyService.setHandler { [weak self] action in
+            Task { @MainActor [weak self] in
+                self?.handleGlobalHotkey(action)
+            }
+        }
+
+        applyGlobalHotkeys()
+    }
+
+    private func applyGlobalHotkeys() {
+        let errors = globalHotkeyService.register(shortcuts: hotkeyAssignments)
+
+        if errors.isEmpty {
+            hotkeyRegistrationError = nil
+            hotkeyStatusLine = "Global hotkeys active."
+            logInfo(category: "hotkey", message: "Registered \(hotkeyAssignments.count) global hotkeys.")
+            return
+        }
+
+        let sortedErrorMessages = errors
+            .sorted { lhs, rhs in
+                lhs.key.title.localizedCaseInsensitiveCompare(rhs.key.title) == .orderedAscending
+            }
+            .map { action, error in
+                "\(action.title): \(error)"
+            }
+        let errorMessage = sortedErrorMessages.joined(separator: " | ")
+        hotkeyRegistrationError = errorMessage
+        hotkeyStatusLine = "Hotkey registration failed. Fallback to menu/settings actions."
+        logError(category: "hotkey", message: errorMessage)
+    }
+
+    private func handleGlobalHotkey(_ action: HotkeyAction) {
+        switch action {
+        case .toggleAutoSwitch:
+            setAutoSwitchEnabled(!autoSwitchEnabled)
+        case .useCurrentInputSourceForActiveDevice:
+            useCurrentInputSourceForActiveDeviceMapping()
+        }
+    }
+
+    private func loadPersistedHotkeyAssignments() -> [HotkeyAction: KeyCombo] {
+        var assignments: [HotkeyAction: KeyCombo] = [:]
+        let decoder = JSONDecoder()
+
+        for action in HotkeyAction.allCases {
+            if let data = appSettingsStore.data(forKey: action.defaultsStorageKey),
+               let decodedCombo = try? decoder.decode(KeyCombo.self, from: data) {
+                assignments[action] = decodedCombo
+            } else {
+                assignments[action] = action.defaultKeyCombo
+            }
+        }
+
+        return assignments
+    }
+
+    private func persistHotkeyCombo(_ combo: KeyCombo, for action: HotkeyAction) {
+        let encoder = JSONEncoder()
+        if let encodedCombo = try? encoder.encode(combo) {
+            appSettingsStore.set(encodedCombo, forKey: action.defaultsStorageKey)
+        }
     }
 
     private func seedKnownDevicesFromMappings() {
@@ -580,6 +883,7 @@ final class AppState: ObservableObject {
                     self?.refreshPauseStateIfNeeded()
                     self?.refreshPermissionStatus()
                     self?.refreshInputSourceState(force: false)
+                    self?.refreshActiveTemporaryOverride()
                 }
                 try? await Task.sleep(for: .seconds(1))
             }
@@ -603,6 +907,8 @@ final class AppState: ObservableObject {
             if status.activeKeyboard != "none" {
                 status.activeKeyboard = "none"
             }
+
+            refreshActiveTemporaryOverride()
 
             return
         }
@@ -653,6 +959,7 @@ final class AppState: ObservableObject {
             )
         }
 
+        refreshActiveTemporaryOverride(for: deviceKey)
         evaluateSwitch(for: deviceKey, eventKind: eventKind)
     }
 
@@ -766,6 +1073,10 @@ final class AppState: ObservableObject {
     }
 
     private func resolvedTargetInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
+        if let temporaryOverrideInputSourceId = resolvedTemporaryOverrideInputSourceId(for: deviceKey) {
+            return temporaryOverrideInputSourceId
+        }
+
         if let mappedInputSourceId = resolvedConfiguredInputSourceId(
             for: deviceKey,
             sourceResolver: { [mappingStore] candidateKey in
@@ -790,6 +1101,21 @@ final class AppState: ObservableObject {
         }
 
         return nil
+    }
+
+    private func resolvedTemporaryOverrideInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
+        guard let temporaryOverride = temporaryOverrideStore.temporaryOverride(
+            for: deviceKey.primaryIdentifier,
+            now: clock.now
+        ) else {
+            return nil
+        }
+
+        guard inputSourceService.existsEnabledInputSource(id: temporaryOverride.inputSourceId) else {
+            return nil
+        }
+
+        return temporaryOverride.inputSourceId
     }
 
     private func resolvedConfiguredInputSourceId(
@@ -891,6 +1217,37 @@ final class AppState: ObservableObject {
         return activeDeviceKey.locationId == deviceKey.locationId
     }
 
+    private func activeDeviceKeyForTemporaryOverride() -> KeyboardDeviceKey? {
+        guard let activeKeyboardDevice else {
+            return nil
+        }
+
+        return canonicalDeviceKey(
+            for: KeyboardDeviceKey(device: activeKeyboardDevice),
+            among: knownDeviceKeys
+        )
+    }
+
+    private func refreshActiveTemporaryOverride(for deviceKey: KeyboardDeviceKey? = nil) {
+        temporaryOverrideStore.clearExpired(now: clock.now)
+
+        let resolvedDeviceKey = deviceKey ?? activeDeviceKeyForTemporaryOverride()
+        guard let resolvedDeviceKey else {
+            if activeTemporaryOverride != nil {
+                activeTemporaryOverride = nil
+            }
+            return
+        }
+
+        let overrideValue = temporaryOverrideStore.temporaryOverride(
+            for: resolvedDeviceKey.primaryIdentifier,
+            now: clock.now
+        )
+        if activeTemporaryOverride != overrideValue {
+            activeTemporaryOverride = overrideValue
+        }
+    }
+
     private func refreshMappingConflicts(usingEnabledSources sources: [InputSourceInfo]) {
         let enabledIds = Set(sources.map(\.id))
         let conflicts = mappingStore.validateMappings(availableEnabledIds: enabledIds)
@@ -990,6 +1347,16 @@ final class AppState: ObservableObject {
 
     private func formattedTime(_ date: Date) -> String {
         Self.pauseTimeFormatter.string(from: date)
+    }
+
+    private func endOfToday(from date: Date) -> Date? {
+        let calendar = Calendar.current
+        return calendar.date(
+            bySettingHour: 23,
+            minute: 59,
+            second: 59,
+            of: date
+        )
     }
 
     private static let pauseTimeFormatter: DateFormatter = {

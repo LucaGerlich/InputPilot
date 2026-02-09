@@ -8,6 +8,10 @@ final class AppSettingsStore {
         self.defaults = defaults
     }
 
+    var userDefaults: UserDefaults {
+        defaults
+    }
+
     func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {
         defaults.object(forKey: key) as? Bool ?? defaultValue
     }
@@ -33,6 +37,18 @@ final class AppSettingsStore {
     }
 
     func set(_ value: String?, forKey key: String) {
+        if let value {
+            defaults.set(value, forKey: key)
+        } else {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    func data(forKey key: String) -> Data? {
+        defaults.data(forKey: key)
+    }
+
+    func set(_ value: Data?, forKey key: String) {
         if let value {
             defaults.set(value, forKey: key)
         } else {

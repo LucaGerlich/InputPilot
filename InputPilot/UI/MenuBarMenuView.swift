@@ -11,6 +11,22 @@ struct MenuBarMenuView: View {
     }()
 
     var body: some View {
+        Section("Profile") {
+            ForEach(appState.profiles) { profile in
+                Button {
+                    appState.setActiveProfile(profile.id)
+                } label: {
+                    if profile.id == appState.activeProfileId {
+                        Label(profile.name, systemImage: "checkmark")
+                    } else {
+                        Text(profile.name)
+                    }
+                }
+            }
+        }
+
+        Divider()
+
         Section("Auto-Switch") {
             Toggle(
                 "Auto-Switch",
@@ -102,6 +118,7 @@ struct MenuBarMenuView: View {
         }
 
         Section("Status") {
+            Text("Profile: \(appState.activeProfileName)")
             Text(appState.permissionLine)
             Text(appState.monitorLine)
             Text(appState.activeKeyboardLine)
@@ -119,6 +136,32 @@ struct MenuBarMenuView: View {
                 Text("Product: \(keyboard.productName ?? "unknown")")
                 Text("Transport: \(keyboard.transport ?? "unknown")")
                 Text("Location ID: \(keyboard.locationId.map(String.init) ?? "unknown")")
+
+                if let temporaryOverride = appState.activeTemporaryOverride {
+                    let sourceName = appState.inputSourceName(for: temporaryOverride.inputSourceId)
+                    if let expiresAt = temporaryOverride.expiresAt {
+                        Text("Lock: \(sourceName) until \(Self.timeFormatter.string(from: expiresAt))")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Lock: \(sourceName) until restart")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Button("Lock current source for this keyboard (until restart)") {
+                    appState.lockCurrentInputSourceForActiveKeyboardUntilRestart()
+                }
+                .disabled(appState.currentInputSourceId == nil)
+
+                Button("Lock until today 23:59") {
+                    appState.lockCurrentInputSourceForActiveKeyboardUntilEndOfDay()
+                }
+                .disabled(appState.currentInputSourceId == nil)
+
+                Button("Clear lock") {
+                    appState.clearTemporaryOverrideForActiveKeyboard()
+                }
+                .disabled(!appState.hasActiveTemporaryOverride)
             } else {
                 Text("No active keyboard detected.")
             }
