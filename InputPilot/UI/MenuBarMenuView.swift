@@ -36,6 +36,19 @@ struct MenuBarMenuView: View {
                 )
             )
 
+            Toggle(
+                "Show notification on switch",
+                isOn: Binding(
+                    get: { appState.showNotificationOnSwitch },
+                    set: { appState.setShowNotificationOnSwitch($0) }
+                )
+            )
+
+            if let notificationPermissionHint = appState.notificationPermissionHint {
+                Text(notificationPermissionHint)
+                    .foregroundStyle(.orange)
+            }
+
             Button("Pause 15 min") {
                 appState.pause(minutes: 15)
             }

@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import AppKit
 import IOKit.hid
+import UserNotifications
 #if DEBUG
 import OSLog
 #endif
@@ -11,6 +12,9 @@ final class AppState: ObservableObject {
     private static let autoSwitchEnabledDefaultsKey = "autoSwitchEnabled"
     private static let pauseUntilDefaultsKey = "autoSwitchPauseUntil"
     private static let globalFallbackInputSourceIdDefaultsKey = "globalFallbackInputSourceId"
+    private static let deviceFilterRuleDefaultsKey = "deviceFilterRule"
+    private static let showNotificationOnSwitchDefaultsKey = "showNotificationOnSwitch"
+    private static let syncViaICloudDriveDefaultsKey = "syncViaICloudDriveEnabled"
     private static let inputSourcePollIntervalSeconds: TimeInterval = 6
 
     @Published private(set) var status = InputStatusSnapshot.placeholder
@@ -36,6 +40,14 @@ final class AppState: ObservableObject {
     @Published private(set) var debugLogEntries: [LogEntry] = []
     @Published private(set) var lastAutoSwitchAction = "No auto-switch action yet."
     @Published private(set) var lastAutoSwitchError: String?
+    @Published private(set) var deviceFilterRule: DeviceFilterRule
+    @Published private(set) var showNotificationOnSwitch: Bool
+    @Published private(set) var notificationPermissionHint: String?
+    @Published private(set) var backupStatusLine = "No backup activity yet."
+    @Published private(set) var backupErrorMessage: String?
+    @Published private(set) var syncViaICloudDriveEnabled: Bool
+    @Published private(set) var isICloudDriveAvailable: Bool
+    @Published private(set) var iCloudDriveSyncHint: String?
 
     private let permissionService: PermissionServicing
     private let hidKeyboardMonitor: HIDKeyboardMonitoring
@@ -44,6 +56,8 @@ final class AppState: ObservableObject {
     private let mappingStore: MappingStoring
     private let temporaryOverrideStore: TemporaryOverrideStoring
     private let globalHotkeyService: GlobalHotkeyServicing
+    private let notificationService: NotificationServicing
+    private let iCloudDriveSyncService: ICloudDriveSyncServicing
     private let appSettingsStore: AppSettingsStore
     private let clock: ClockProviding
     private let debugLogService: DebugLogServicing
@@ -51,6 +65,9 @@ final class AppState: ObservableObject {
 
     private var detectedDevicesByKey: [KeyboardDeviceKey: ActiveKeyboardDevice] = [:]
     private var permissionRefreshTask: Task<Void, Never>?
+    private var iCloudSyncTask: Task<Void, Never>?
+    private var lastICloudSyncedBackupData: Data?
+    private var isApplyingBackupSnapshot = false
     private var lastMonitorStartFailure: String?
     private var lastInputSourceRefreshAt = Date.distantPast
 
@@ -66,6 +83,8 @@ final class AppState: ObservableObject {
         mappingStore: MappingStoring,
         temporaryOverrideStore: TemporaryOverrideStoring? = nil,
         globalHotkeyService: GlobalHotkeyServicing,
+        notificationService: NotificationServicing,
+        iCloudDriveSyncService: ICloudDriveSyncServicing,
         appSettingsStore: AppSettingsStore,
         clock: ClockProviding,
         debugLogService: DebugLogServicing
@@ -77,6 +96,8 @@ final class AppState: ObservableObject {
         self.mappingStore = mappingStore
         self.temporaryOverrideStore = temporaryOverrideStore ?? TemporaryOverrideStore()
         self.globalHotkeyService = globalHotkeyService
+        self.notificationService = notificationService
+        self.iCloudDriveSyncService = iCloudDriveSyncService
         self.appSettingsStore = appSettingsStore
         self.clock = clock
         self.debugLogService = debugLogService
@@ -91,6 +112,16 @@ final class AppState: ObservableObject {
         self.globalFallbackInputSourceId = Self.normalizedInputSourceId(
             appSettingsStore.string(forKey: Self.globalFallbackInputSourceIdDefaultsKey)
         )
+        self.deviceFilterRule = Self.loadPersistedDeviceFilterRule(from: appSettingsStore)
+        self.showNotificationOnSwitch = appSettingsStore.bool(
+            forKey: Self.showNotificationOnSwitchDefaultsKey,
+            default: false
+        )
+        self.syncViaICloudDriveEnabled = appSettingsStore.bool(
+            forKey: Self.syncViaICloudDriveDefaultsKey,
+            default: false
+        )
+        self.isICloudDriveAvailable = iCloudDriveSyncService.isAvailable
         self.debugLogEntries = debugLogService.entries
         self.hotkeyAssignments = loadPersistedHotkeyAssignments()
 
@@ -101,6 +132,14 @@ final class AppState: ObservableObject {
         refreshPermissionStatus()
         refreshInputSourceState()
         refreshActiveTemporaryOverride()
+        Task { [weak self] in
+            await self?.refreshNotificationPermissionStatus(requestIfNeeded: false)
+        }
+        if syncViaICloudDriveEnabled {
+            bootstrapICloudSyncAfterEnable()
+        } else if !isICloudDriveAvailable {
+            iCloudDriveSyncHint = "iCloud Drive is not available on this Mac."
+        }
         startPermissionMonitoring()
 
         if !isAutoSwitchActive {
@@ -121,6 +160,8 @@ final class AppState: ObservableObject {
             profileManager: profileManager,
             mappingStore: MappingStore(profileManager: profileManager),
             globalHotkeyService: GlobalHotkeyService(),
+            notificationService: NotificationService(),
+            iCloudDriveSyncService: ICloudDriveSyncService(),
             appSettingsStore: AppSettingsStore(),
             clock: SystemClock(),
             debugLogService: DebugLogService()
@@ -134,6 +175,8 @@ final class AppState: ObservableObject {
         mappingStore: MappingStoring,
         temporaryOverrideStore: TemporaryOverrideStoring? = nil,
         globalHotkeyService: GlobalHotkeyServicing? = nil,
+        notificationService: NotificationServicing? = nil,
+        iCloudDriveSyncService: ICloudDriveSyncServicing? = nil,
         appSettingsStore: AppSettingsStore,
         clock: ClockProviding,
         profileManager: ProfileManaging? = nil
@@ -142,6 +185,8 @@ final class AppState: ObservableObject {
         let resolvedTemporaryOverrideStore = temporaryOverrideStore
             ?? TemporaryOverrideStore(defaults: appSettingsStore.userDefaults)
         let resolvedGlobalHotkeyService = globalHotkeyService ?? NoOpGlobalHotkeyService()
+        let resolvedNotificationService = notificationService ?? NoOpNotificationService()
+        let resolvedICloudDriveSyncService = iCloudDriveSyncService ?? NoOpICloudDriveSyncService()
         self.init(
             permissionService: permissionService,
             hidKeyboardMonitor: hidKeyboardMonitor,
@@ -150,6 +195,8 @@ final class AppState: ObservableObject {
             mappingStore: mappingStore,
             temporaryOverrideStore: resolvedTemporaryOverrideStore,
             globalHotkeyService: resolvedGlobalHotkeyService,
+            notificationService: resolvedNotificationService,
+            iCloudDriveSyncService: resolvedICloudDriveSyncService,
             appSettingsStore: appSettingsStore,
             clock: clock,
             debugLogService: DebugLogService()
@@ -158,6 +205,7 @@ final class AppState: ObservableObject {
 
     deinit {
         permissionRefreshTask?.cancel()
+        iCloudSyncTask?.cancel()
     }
 
     var permissionLine: String {
@@ -257,6 +305,18 @@ final class AppState: ObservableObject {
         activeTemporaryOverride != nil
     }
 
+    var canSyncViaICloudDrive: Bool {
+        isICloudDriveAvailable
+    }
+
+    var deviceFilterMode: DeviceFilterRule.Mode {
+        deviceFilterRule.mode
+    }
+
+    var deviceFilterModes: [DeviceFilterRule.Mode] {
+        DeviceFilterRule.Mode.allCases
+    }
+
     var hotkeyActions: [HotkeyAction] {
         HotkeyAction.allCases
     }
@@ -303,6 +363,67 @@ final class AppState: ObservableObject {
             let message = "Debug log export failed: \(error.localizedDescription)"
             logError(category: "debug", message: message)
             recordFailure(message)
+        }
+    }
+
+    func exportBackup(to url: URL) {
+        do {
+            let data = try serializedBackupData()
+            try data.write(to: url, options: [.atomic])
+            backupErrorMessage = nil
+            backupStatusLine = "Exported backup to \(url.lastPathComponent)."
+            recordAction("Exported backup to \(url.lastPathComponent).")
+        } catch {
+            let message = "Backup export failed: \(error.localizedDescription)"
+            backupErrorMessage = message
+            backupStatusLine = "Backup export failed."
+            recordFailure(message)
+        }
+    }
+
+    func importBackup(from url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            let snapshot = try AppBackupMigrator.decodeSnapshot(from: data)
+            try applyBackupSnapshot(snapshot, sourceDescription: url.lastPathComponent)
+            backupErrorMessage = nil
+            backupStatusLine = "Imported backup from \(url.lastPathComponent)."
+            recordAction("Imported backup from \(url.lastPathComponent).")
+            scheduleICloudSyncIfNeeded()
+        } catch {
+            let message = "Backup import failed: \(error.localizedDescription)"
+            backupErrorMessage = message
+            backupStatusLine = "Backup import failed."
+            recordFailure(message)
+        }
+    }
+
+    func setSyncViaICloudDriveEnabled(_ enabled: Bool) {
+        guard syncViaICloudDriveEnabled != enabled else {
+            return
+        }
+
+        isICloudDriveAvailable = iCloudDriveSyncService.isAvailable
+        if enabled, !isICloudDriveAvailable {
+            syncViaICloudDriveEnabled = false
+            appSettingsStore.set(false, forKey: Self.syncViaICloudDriveDefaultsKey)
+            iCloudDriveSyncHint = "iCloud Drive is unavailable. Sign in to iCloud Drive to enable sync."
+            backupErrorMessage = nil
+            backupStatusLine = "iCloud sync unavailable."
+            return
+        }
+
+        syncViaICloudDriveEnabled = enabled
+        appSettingsStore.set(enabled, forKey: Self.syncViaICloudDriveDefaultsKey)
+
+        if enabled {
+            iCloudDriveSyncHint = "iCloud sync enabled."
+            recordAction("Enabled iCloud Drive sync.")
+            bootstrapICloudSyncAfterEnable()
+        } else {
+            iCloudSyncTask?.cancel()
+            iCloudDriveSyncHint = nil
+            recordAction("Disabled iCloud Drive sync.")
         }
     }
 
@@ -405,6 +526,54 @@ final class AppState: ObservableObject {
             pause(minutes: 60 * 24 * 365)
         } else {
             resume()
+        }
+    }
+
+    func setDeviceFilterMode(_ mode: DeviceFilterRule.Mode) {
+        guard deviceFilterRule.mode != mode else {
+            return
+        }
+
+        deviceFilterRule.mode = mode
+        persistDeviceFilterRule()
+        recordAction("Device filter mode set to \(mode.displayName).")
+        reevaluateForActiveDeviceAfterFilterChange()
+    }
+
+    func isDeviceEnabledForAutoSwitch(_ deviceKey: KeyboardDeviceKey) -> Bool {
+        deviceFilterRule.isDeviceEnabled(deviceKey.fingerprint)
+    }
+
+    func setDeviceEnabledForAutoSwitch(_ enabled: Bool, for deviceKey: KeyboardDeviceKey) {
+        var updatedRule = deviceFilterRule
+        updatedRule.setDeviceEnabled(enabled, for: deviceKey.fingerprint)
+        guard updatedRule != deviceFilterRule else {
+            return
+        }
+
+        deviceFilterRule = updatedRule
+        persistDeviceFilterRule()
+        let stateLabel = enabled ? "enabled" : "disabled"
+        recordAction("Auto-switch \(stateLabel) for \(deviceTitle(for: deviceKey)).")
+        reevaluateForActiveDeviceAfterFilterChange()
+    }
+
+    func setShowNotificationOnSwitch(_ enabled: Bool) {
+        guard showNotificationOnSwitch != enabled else {
+            return
+        }
+
+        showNotificationOnSwitch = enabled
+        appSettingsStore.set(enabled, forKey: Self.showNotificationOnSwitchDefaultsKey)
+
+        if enabled {
+            recordAction("Switch notifications enabled.")
+            Task { [weak self] in
+                await self?.refreshNotificationPermissionStatus(requestIfNeeded: true)
+            }
+        } else {
+            notificationPermissionHint = nil
+            recordAction("Switch notifications disabled.")
         }
     }
 
@@ -796,6 +965,148 @@ final class AppState: ObservableObject {
         }
     }
 
+    private static func loadPersistedDeviceFilterRule(from settingsStore: AppSettingsStore) -> DeviceFilterRule {
+        guard let data = settingsStore.data(forKey: Self.deviceFilterRuleDefaultsKey),
+              let decodedRule = try? JSONDecoder().decode(DeviceFilterRule.self, from: data) else {
+            return DeviceFilterRule()
+        }
+
+        return decodedRule
+    }
+
+    private func persistDeviceFilterRule() {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(deviceFilterRule) {
+            appSettingsStore.set(data, forKey: Self.deviceFilterRuleDefaultsKey)
+        }
+    }
+
+    private func serializedBackupData() throws -> Data {
+        let snapshot = makeBackupSnapshot()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return try encoder.encode(snapshot)
+    }
+
+    private func makeBackupSnapshot() -> AppBackupSnapshot {
+        let settings = AppBackupSettings(
+            autoSwitchEnabled: autoSwitchEnabled,
+            pauseUntil: pauseUntil,
+            showNotificationOnSwitch: showNotificationOnSwitch,
+            hotkeyAssignments: normalizedHotkeyAssignments(hotkeyAssignments),
+            syncViaICloudDriveEnabled: syncViaICloudDriveEnabled
+        )
+
+        return AppBackupSnapshot(
+            exportedAt: clock.now,
+            profiles: profiles,
+            activeProfileId: activeProfileId,
+            mappingEntries: mappingStore.exportBackupEntries(),
+            globalFallbackInputSourceId: globalFallbackInputSourceId,
+            deviceFilterRule: deviceFilterRule,
+            settings: settings
+        )
+    }
+
+    private func applyBackupSnapshot(
+        _ snapshot: AppBackupSnapshot,
+        sourceDescription: String
+    ) throws {
+        guard snapshot.schemaVersion == AppBackupSnapshot.currentSchemaVersion else {
+            throw AppBackupError.unsupportedSchemaVersion(snapshot.schemaVersion)
+        }
+
+        isApplyingBackupSnapshot = true
+        defer {
+            isApplyingBackupSnapshot = false
+        }
+
+        profileManager.replaceAllProfiles(snapshot.profiles, activeProfileId: snapshot.activeProfileId)
+        mappingStore.replaceAll(with: snapshot.mappingEntries)
+
+        globalFallbackInputSourceId = Self.normalizedInputSourceId(snapshot.globalFallbackInputSourceId)
+        appSettingsStore.set(globalFallbackInputSourceId, forKey: Self.globalFallbackInputSourceIdDefaultsKey)
+
+        deviceFilterRule = snapshot.deviceFilterRule
+        persistDeviceFilterRule()
+
+        autoSwitchEnabled = snapshot.settings.autoSwitchEnabled
+        appSettingsStore.set(autoSwitchEnabled, forKey: Self.autoSwitchEnabledDefaultsKey)
+
+        pauseUntil = snapshot.settings.pauseUntil
+        appSettingsStore.set(pauseUntil, forKey: Self.pauseUntilDefaultsKey)
+
+        showNotificationOnSwitch = snapshot.settings.showNotificationOnSwitch
+        appSettingsStore.set(showNotificationOnSwitch, forKey: Self.showNotificationOnSwitchDefaultsKey)
+
+        hotkeyAssignments = normalizedHotkeyAssignments(snapshot.settings.hotkeyAssignments)
+        for action in HotkeyAction.allCases {
+            if let combo = hotkeyAssignments[action] {
+                persistHotkeyCombo(combo, for: action)
+            }
+        }
+        applyGlobalHotkeys()
+
+        syncViaICloudDriveEnabled = snapshot.settings.syncViaICloudDriveEnabled
+        appSettingsStore.set(syncViaICloudDriveEnabled, forKey: Self.syncViaICloudDriveDefaultsKey)
+        isICloudDriveAvailable = iCloudDriveSyncService.isAvailable
+        if syncViaICloudDriveEnabled && !isICloudDriveAvailable {
+            syncViaICloudDriveEnabled = false
+            appSettingsStore.set(false, forKey: Self.syncViaICloudDriveDefaultsKey)
+            iCloudDriveSyncHint = "Imported backup enabled iCloud sync, but iCloud Drive is unavailable."
+        }
+
+        refreshProfileState()
+        seedKnownDevicesFromMappings()
+        refreshInputSourceState(force: true)
+        refreshMappingConflicts(usingEnabledSources: enabledInputSources)
+        refreshActiveTemporaryOverride()
+        switchController.reset()
+        clearLastError()
+
+        if showNotificationOnSwitch {
+            Task { [weak self] in
+                await self?.refreshNotificationPermissionStatus(requestIfNeeded: false)
+            }
+        } else {
+            notificationPermissionHint = nil
+        }
+
+        if syncViaICloudDriveEnabled {
+            iCloudDriveSyncHint = "Synced configuration imported from \(sourceDescription)."
+        }
+
+        if isAutoSwitchActive, let activeKeyboardDevice {
+            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
+        }
+    }
+
+    private func normalizedHotkeyAssignments(
+        _ assignments: [HotkeyAction: KeyCombo]
+    ) -> [HotkeyAction: KeyCombo] {
+        var normalizedAssignments: [HotkeyAction: KeyCombo] = [:]
+        for action in HotkeyAction.allCases {
+            normalizedAssignments[action] = assignments[action] ?? action.defaultKeyCombo
+        }
+        return normalizedAssignments
+    }
+
+    private func reevaluateForActiveDeviceAfterFilterChange() {
+        switchController.reset()
+        refreshActiveTemporaryOverride()
+        refreshMappingConflicts(usingEnabledSources: enabledInputSources)
+
+        guard let activeKeyboardDevice else {
+            return
+        }
+
+        evaluateSwitch(
+            for: KeyboardDeviceKey(device: activeKeyboardDevice),
+            eventKind: .deviceStabilized
+        )
+    }
+
     private func seedKnownDevicesFromMappings() {
         knownDeviceKeys = mappingStore.allKnownDeviceKeys()
         sortKnownDevices()
@@ -980,6 +1291,11 @@ final class AppState: ObservableObject {
     }
 
     private func evaluateSwitch(for deviceKey: KeyboardDeviceKey, eventKind: KeyboardEventKind) {
+        guard isDeviceEnabledForAutoSwitch(deviceKey) else {
+            switchController.reset()
+            return
+        }
+
         let targetInputSourceId = resolvedTargetInputSourceId(for: deviceKey)
 
         switchController.evaluateSwitch(
@@ -1043,6 +1359,10 @@ final class AppState: ObservableObject {
         )
         clearLastError()
         recordAction("Auto-switched \(deviceName) -> \(targetSourceName).")
+        sendSwitchNotificationIfNeeded(
+            keyboardName: deviceName,
+            targetSourceName: targetSourceName
+        )
         return true
     }
 
@@ -1250,7 +1570,11 @@ final class AppState: ObservableObject {
 
     private func refreshMappingConflicts(usingEnabledSources sources: [InputSourceInfo]) {
         let enabledIds = Set(sources.map(\.id))
-        let conflicts = mappingStore.validateMappings(availableEnabledIds: enabledIds)
+        let conflicts = mappingStore
+            .validateMappings(availableEnabledIds: enabledIds)
+            .filter { conflict in
+                isDeviceEnabledForAutoSwitch(conflict.deviceKey)
+            }
         guard mappingConflicts != conflicts else {
             return
         }
@@ -1284,6 +1608,150 @@ final class AppState: ObservableObject {
         return didSelect
     }
 
+    private func refreshNotificationPermissionStatus(requestIfNeeded: Bool) async {
+        guard showNotificationOnSwitch else {
+            notificationPermissionHint = nil
+            return
+        }
+
+        let status: UNAuthorizationStatus
+        if requestIfNeeded {
+            status = await notificationService.requestNotificationPermissionIfNeeded()
+        } else {
+            status = await notificationService.notificationAuthorizationStatus()
+        }
+
+        guard showNotificationOnSwitch else {
+            notificationPermissionHint = nil
+            return
+        }
+
+        switch status {
+        case .denied:
+            notificationPermissionHint = "Notifications denied. Enable notifications for InputPilot in System Settings."
+            logWarn(category: "notification", message: "Notifications are denied.")
+        case .authorized, .provisional:
+            notificationPermissionHint = nil
+        case .notDetermined:
+            notificationPermissionHint = "Notification permission not granted yet."
+        @unknown default:
+            notificationPermissionHint = "Notification permission status is unknown."
+        }
+    }
+
+    private func sendSwitchNotificationIfNeeded(
+        keyboardName: String,
+        targetSourceName: String
+    ) {
+        guard showNotificationOnSwitch else {
+            return
+        }
+
+        Task { [weak self] in
+            guard let self else {
+                return
+            }
+
+            let status = await self.notificationService.notificationAuthorizationStatus()
+            if !Self.isNotificationAuthorizationGranted(status) {
+                await self.refreshNotificationPermissionStatus(requestIfNeeded: false)
+                return
+            }
+
+            let didSend = await self.notificationService.sendNotification(
+                title: "Input source switched",
+                body: "\(keyboardName) → \(targetSourceName)"
+            )
+            if didSend {
+                self.logInfo(
+                    category: "notification",
+                    message: "Posted switch notification for \(keyboardName) -> \(targetSourceName)."
+                )
+            } else {
+                self.logWarn(
+                    category: "notification",
+                    message: "Failed to post switch notification for \(keyboardName)."
+                )
+            }
+        }
+    }
+
+    private static func isNotificationAuthorizationGranted(_ status: UNAuthorizationStatus) -> Bool {
+        switch status {
+        case .authorized, .provisional:
+            return true
+        case .notDetermined, .denied:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
+    private func scheduleICloudSyncIfNeeded() {
+        guard syncViaICloudDriveEnabled else {
+            return
+        }
+
+        guard !isApplyingBackupSnapshot else {
+            return
+        }
+
+        isICloudDriveAvailable = iCloudDriveSyncService.isAvailable
+        guard isICloudDriveAvailable else {
+            iCloudDriveSyncHint = "iCloud Drive is unavailable."
+            return
+        }
+
+        iCloudSyncTask?.cancel()
+        iCloudSyncTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(700))
+            await MainActor.run {
+                self?.syncToICloudDriveNow()
+            }
+        }
+    }
+
+    private func bootstrapICloudSyncAfterEnable() {
+        do {
+            if let data = try iCloudDriveSyncService.loadBackupData(), !data.isEmpty {
+                let snapshot = try AppBackupMigrator.decodeSnapshot(from: data)
+                try applyBackupSnapshot(snapshot, sourceDescription: "iCloud Drive")
+                lastICloudSyncedBackupData = data
+                backupErrorMessage = nil
+                backupStatusLine = "Imported backup from iCloud Drive."
+                iCloudDriveSyncHint = "Loaded backup from iCloud Drive."
+                return
+            }
+
+            scheduleICloudSyncIfNeeded()
+        } catch {
+            let message = "iCloud backup load failed: \(error.localizedDescription)"
+            backupErrorMessage = message
+            backupStatusLine = "iCloud import failed."
+            iCloudDriveSyncHint = message
+        }
+    }
+
+    private func syncToICloudDriveNow() {
+        guard syncViaICloudDriveEnabled else {
+            return
+        }
+
+        do {
+            let data = try serializedBackupData()
+            if data == lastICloudSyncedBackupData {
+                return
+            }
+
+            try iCloudDriveSyncService.saveBackupData(data)
+            lastICloudSyncedBackupData = data
+            iCloudDriveSyncHint = "Last iCloud sync: \(formattedTime(clock.now))."
+            backupErrorMessage = nil
+        } catch {
+            iCloudDriveSyncHint = "iCloud sync failed: \(error.localizedDescription)"
+        }
+    }
+
     private func logInfo(category: String, message: String) {
         debugLogService.logInfo(category: category, message: message)
         debugLogEntries = debugLogService.entries
@@ -1302,6 +1770,7 @@ final class AppState: ObservableObject {
     private func recordAction(_ message: String) {
         lastAutoSwitchAction = message
         debugLog(message)
+        scheduleICloudSyncIfNeeded()
     }
 
     private func recordFailure(_ message: String) {

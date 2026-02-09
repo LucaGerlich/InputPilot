@@ -1,9 +1,16 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     private let noAutoSwitchTag = "__NO_AUTO_SWITCH__"
     private let noFallbackTag = "__NO_FALLBACK__"
     private let rowLabelWidth: CGFloat = 170
+    private static let backupFilenameFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        return formatter
+    }()
 
     @EnvironmentObject private var appState: AppState
     @State private var newProfileName = ""
@@ -21,6 +28,19 @@ struct SettingsView: View {
                                 set: { appState.setAutoSwitchPaused($0) }
                             )
                         )
+
+                        Toggle(
+                            "Show notification on switch",
+                            isOn: Binding(
+                                get: { appState.showNotificationOnSwitch },
+                                set: { appState.setShowNotificationOnSwitch($0) }
+                            )
+                        )
+
+                        if let notificationPermissionHint = appState.notificationPermissionHint {
+                            Text(notificationPermissionHint)
+                                .foregroundStyle(.orange)
+                        }
 
                         Text("Last action: \(appState.lastAutoSwitchAction)")
 
@@ -105,6 +125,49 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
+                GroupBox("Backup & Sync") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        row("Backup") {
+                            HStack(spacing: 8) {
+                                Button("Export…") {
+                                    exportBackup()
+                                }
+
+                                Button("Import…") {
+                                    importBackup()
+                                }
+                            }
+                        }
+
+                        Toggle(
+                            "Sync via iCloud Drive",
+                            isOn: Binding(
+                                get: { appState.syncViaICloudDriveEnabled },
+                                set: { appState.setSyncViaICloudDriveEnabled($0) }
+                            )
+                        )
+
+                        if !appState.canSyncViaICloudDrive {
+                            Text("iCloud Drive is unavailable on this Mac.")
+                                .foregroundStyle(.orange)
+                        }
+
+                        if let iCloudDriveSyncHint = appState.iCloudDriveSyncHint {
+                            Text(iCloudDriveSyncHint)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text(appState.backupStatusLine)
+                            .foregroundStyle(.secondary)
+
+                        if let backupErrorMessage = appState.backupErrorMessage {
+                            Text(backupErrorMessage)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 GroupBox("Input Monitoring") {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(appState.permissionLine)
@@ -179,6 +242,15 @@ struct SettingsView: View {
 
                 GroupBox("Keyboard Device Mappings") {
                     VStack(alignment: .leading, spacing: 12) {
+                        row("Filter Mode") {
+                            Picker("Filter Mode", selection: deviceFilterModeBinding) {
+                                ForEach(appState.deviceFilterModes) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+
                         if appState.knownDeviceKeys.isEmpty {
                             Text("No keyboard devices recognized yet. Press a key on a keyboard to detect it.")
                                 .foregroundStyle(.secondary)
@@ -199,7 +271,16 @@ struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
 
-                                if appState.selectableInputSources.isEmpty {
+                                Toggle(
+                                    "Enabled for auto-switch",
+                                    isOn: deviceEnabledBinding(for: deviceKey)
+                                )
+
+                                if !appState.isDeviceEnabledForAutoSwitch(deviceKey) {
+                                    Text("Excluded by device filter.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else if appState.selectableInputSources.isEmpty {
                                     Text("No selectable input sources available.")
                                         .foregroundStyle(.secondary)
                                 } else {
@@ -351,6 +432,20 @@ struct SettingsView: View {
         )
     }
 
+    private var deviceFilterModeBinding: Binding<DeviceFilterRule.Mode> {
+        Binding(
+            get: { appState.deviceFilterMode },
+            set: { appState.setDeviceFilterMode($0) }
+        )
+    }
+
+    private func deviceEnabledBinding(for deviceKey: KeyboardDeviceKey) -> Binding<Bool> {
+        Binding(
+            get: { appState.isDeviceEnabledForAutoSwitch(deviceKey) },
+            set: { appState.setDeviceEnabledForAutoSwitch($0, for: deviceKey) }
+        )
+    }
+
     private func hotkeySelectionBinding(for action: HotkeyAction) -> Binding<String> {
         Binding(
             get: { appState.hotkeyCombo(for: action).id },
@@ -364,5 +459,34 @@ struct SettingsView: View {
 
     private func syncRenameFieldToActiveProfile() {
         renameProfileName = appState.activeProfileName
+    }
+
+    private func exportBackup() {
+        let panel = NSSavePanel()
+        panel.title = "Export InputPilot Backup"
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [UTType.json]
+        panel.nameFieldStringValue = "InputPilot-Backup-\(Self.backupFilenameFormatter.string(from: Date())).json"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        appState.exportBackup(to: url)
+    }
+
+    private func importBackup() {
+        let panel = NSOpenPanel()
+        panel.title = "Import InputPilot Backup"
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [UTType.json]
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        appState.importBackup(from: url)
     }
 }

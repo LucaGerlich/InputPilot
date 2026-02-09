@@ -1,5 +1,6 @@
 import Foundation
 import IOKit.hid
+import UserNotifications
 import Testing
 @testable import InputPilot
 
@@ -219,6 +220,104 @@ struct AppStateAutoSwitchTests {
     }
 
     @Test
+    func enablingNotificationsRequestsPermissionAndShowsDeniedHint() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        let mappingStore = MockMappingStore()
+        let notificationService = MockNotificationService()
+        notificationService.authorizationStatus = .notDetermined
+        notificationService.requestAuthorizationResultStatus = .denied
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            notificationService: notificationService,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        #expect(notificationService.requestPermissionCallCount == 0)
+        appState.setShowNotificationOnSwitch(true)
+
+        await waitFor {
+            notificationService.requestPermissionCallCount == 1
+        }
+
+        #expect(appState.showNotificationOnSwitch == true)
+        #expect(appState.notificationPermissionHint?.contains("denied") == true)
+    }
+
+    @Test
+    func autoSwitchSendsNotificationWhenEnabled() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let device = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 832,
+            productName: "Apple Keyboard",
+            transport: "USB",
+            locationId: 123
+        )
+        let deviceKey = KeyboardDeviceKey(device: device)
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+
+        let mappingStore = MockMappingStore()
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.US")
+
+        let notificationService = MockNotificationService()
+        notificationService.authorizationStatus = .authorized
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            notificationService: notificationService,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        appState.setShowNotificationOnSwitch(true)
+        keyboardMonitor.emit(device)
+
+        await waitFor {
+            !notificationService.sentNotifications.isEmpty
+        }
+
+        #expect(notificationService.sentNotifications.count == 1)
+        #expect(notificationService.sentNotifications[0].title == "Input source switched")
+        #expect(notificationService.sentNotifications[0].body.contains("Apple Keyboard"))
+        #expect(notificationService.sentNotifications[0].body.contains("U.S."))
+    }
+
+    @Test
     func doesNotAutoSwitchWithoutMapping() async throws {
         let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
@@ -261,6 +360,117 @@ struct AppStateAutoSwitchTests {
         }
 
         #expect(inputSourceService.selectCalls.isEmpty)
+    }
+
+    @Test
+    func denyListBlocksSelectedDevice() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let device = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 832,
+            productName: "Apple Keyboard",
+            transport: "USB",
+            locationId: 123
+        )
+        let deviceKey = KeyboardDeviceKey(device: device)
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+
+        let mappingStore = MockMappingStore()
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.US")
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        appState.setDeviceFilterMode(.denyList)
+        appState.setDeviceEnabledForAutoSwitch(false, for: deviceKey)
+        keyboardMonitor.emit(device)
+
+        await waitFor {
+            appState.activeKeyboardDevice != nil
+        }
+
+        #expect(appState.isDeviceEnabledForAutoSwitch(deviceKey) == false)
+        #expect(inputSourceService.selectCalls.isEmpty)
+    }
+
+    @Test
+    func allowListRequiresSelectedDevice() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let device = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 832,
+            productName: "Apple Keyboard",
+            transport: "USB",
+            locationId: 123
+        )
+        let deviceKey = KeyboardDeviceKey(device: device)
+
+        let permissionService = MockPermissionService(accessType: kIOHIDAccessTypeGranted)
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+
+        let mappingStore = MockMappingStore()
+        mappingStore.setMapping(deviceKey: deviceKey, inputSourceId: "com.apple.keylayout.US")
+
+        let appState = AppState(
+            permissionService: permissionService,
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: mappingStore,
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        appState.setDeviceFilterMode(.allowList)
+        keyboardMonitor.emit(device)
+        await waitFor {
+            appState.activeKeyboardDevice != nil
+        }
+        #expect(inputSourceService.selectCalls.isEmpty)
+
+        appState.setDeviceEnabledForAutoSwitch(true, for: deviceKey)
+        keyboardMonitor.emit(device)
+        await waitFor {
+            inputSourceService.selectCalls.count == 1
+        }
+
+        #expect(appState.isDeviceEnabledForAutoSwitch(deviceKey) == true)
+        #expect(inputSourceService.selectCalls == ["com.apple.keylayout.US"])
     }
 
     @Test

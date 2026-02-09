@@ -2,12 +2,7 @@ import Foundation
 
 @MainActor
 final class MappingStore: MappingStoring {
-    private struct StoredMapping: Codable {
-        let profileId: String
-        let deviceKey: KeyboardDeviceKey
-        let inputSourceId: String?
-        let perDeviceFallbackInputSourceId: String?
-    }
+    private typealias StoredMapping = MappingBackupEntry
 
     private struct LegacyProfilelessStoredMapping: Codable {
         let deviceKey: KeyboardDeviceKey
@@ -134,6 +129,52 @@ final class MappingStore: MappingStoring {
 
                 return lhs.deviceKey.id < rhs.deviceKey.id
             }
+    }
+
+    func exportBackupEntries() -> [MappingBackupEntry] {
+        let allConfigurations = loadAllConfigurations()
+        return allConfigurations
+            .flatMap { profileId, profileConfigurations in
+                profileConfigurations.compactMap { deviceKey, configuration -> MappingBackupEntry? in
+                    let mappingInputSourceId = normalizedInputSourceId(configuration.mappingInputSourceId)
+                    let perDeviceFallbackInputSourceId = normalizedInputSourceId(configuration.perDeviceFallbackInputSourceId)
+                    guard mappingInputSourceId != nil || perDeviceFallbackInputSourceId != nil else {
+                        return nil
+                    }
+
+                    return MappingBackupEntry(
+                        profileId: normalizedProfileId(profileId),
+                        deviceKey: deviceKey,
+                        inputSourceId: mappingInputSourceId,
+                        perDeviceFallbackInputSourceId: perDeviceFallbackInputSourceId
+                    )
+                }
+            }
+            .sorted { lhs, rhs in
+                if lhs.profileId == rhs.profileId {
+                    return lhs.deviceKey.id < rhs.deviceKey.id
+                }
+
+                return lhs.profileId < rhs.profileId
+            }
+    }
+
+    func replaceAll(with entries: [MappingBackupEntry]) {
+        var allConfigurations: ProfileConfigurations = [:]
+        for entry in entries {
+            let profileId = normalizedProfileId(entry.profileId)
+            var profileConfigurations = allConfigurations[profileId] ?? [:]
+            let configuration = DeviceConfiguration(
+                mappingInputSourceId: normalizedInputSourceId(entry.inputSourceId),
+                perDeviceFallbackInputSourceId: normalizedInputSourceId(entry.perDeviceFallbackInputSourceId)
+            )
+            if configuration.mappingInputSourceId != nil || configuration.perDeviceFallbackInputSourceId != nil {
+                profileConfigurations[entry.deviceKey] = configuration
+                allConfigurations[profileId] = profileConfigurations
+            }
+        }
+
+        saveConfigurations(allConfigurations)
     }
 
     private var activeProfileId: String {

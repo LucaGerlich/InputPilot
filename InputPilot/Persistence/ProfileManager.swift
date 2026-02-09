@@ -116,6 +116,16 @@ final class ProfileManager: ProfileManaging {
         persistActiveProfileId()
     }
 
+    func replaceAllProfiles(_ profiles: [Profile], activeProfileId: String?) {
+        storedProfiles = Self.ensureDefaultProfiles(in: profiles)
+        storedActiveProfileId = Self.resolveActiveProfileId(
+            preferredActiveId: activeProfileId,
+            profiles: storedProfiles
+        )
+        persistProfiles()
+        persistActiveProfileId()
+    }
+
     private func persistProfiles() {
         guard let data = try? JSONEncoder().encode(storedProfiles) else {
             return

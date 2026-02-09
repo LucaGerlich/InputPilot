@@ -1,5 +1,6 @@
 import Foundation
 import IOKit.hid
+import UserNotifications
 @testable import InputPilot
 
 @MainActor
@@ -154,6 +155,18 @@ final class MockProfileManager: ProfileManaging {
 
         activeProfileId = id
     }
+
+    func replaceAllProfiles(_ profiles: [Profile], activeProfileId: String?) {
+        let resolvedProfiles = profiles.isEmpty ? Profile.defaultProfiles : profiles
+        self.profiles = resolvedProfiles
+
+        if let activeProfileId,
+           resolvedProfiles.contains(where: { $0.id == activeProfileId }) {
+            self.activeProfileId = activeProfileId
+        } else {
+            self.activeProfileId = resolvedProfiles.first?.id ?? Profile.defaultProfileId
+        }
+    }
 }
 
 @MainActor
@@ -213,6 +226,49 @@ final class MockMappingStore: MappingStoring {
             )
         }
     }
+
+    func exportBackupEntries() -> [MappingBackupEntry] {
+        let profileId = Profile.defaultProfileId
+
+        let mappingEntries = mappings.map { deviceKey, inputSourceId in
+            MappingBackupEntry(
+                profileId: profileId,
+                deviceKey: deviceKey,
+                inputSourceId: inputSourceId,
+                perDeviceFallbackInputSourceId: perDeviceFallbacks[deviceKey]
+            )
+        }
+
+        let fallbackOnlyEntries = perDeviceFallbacks
+            .filter { mappings[$0.key] == nil }
+            .map { deviceKey, fallbackId in
+                MappingBackupEntry(
+                    profileId: profileId,
+                    deviceKey: deviceKey,
+                    inputSourceId: nil,
+                    perDeviceFallbackInputSourceId: fallbackId
+                )
+            }
+
+        return (mappingEntries + fallbackOnlyEntries)
+            .sorted { lhs, rhs in
+                lhs.deviceKey.id < rhs.deviceKey.id
+            }
+    }
+
+    func replaceAll(with entries: [MappingBackupEntry]) {
+        mappings.removeAll()
+        perDeviceFallbacks.removeAll()
+
+        for entry in entries {
+            if let inputSourceId = entry.inputSourceId {
+                mappings[entry.deviceKey] = inputSourceId
+            }
+            if let fallbackId = entry.perDeviceFallbackInputSourceId {
+                perDeviceFallbacks[entry.deviceKey] = fallbackId
+            }
+        }
+    }
 }
 
 @MainActor
@@ -260,6 +316,63 @@ final class MockTemporaryOverrideStore: TemporaryOverrideStoring {
             overridesByFingerprintKey.removeValue(forKey: key)
             persistedKeys.remove(key)
         }
+    }
+}
+
+@MainActor
+final class MockNotificationService: NotificationServicing {
+    struct SentNotification: Equatable {
+        let title: String
+        let body: String
+    }
+
+    var authorizationStatus: UNAuthorizationStatus = .authorized
+    var requestAuthorizationResultStatus: UNAuthorizationStatus = .authorized
+    var sendResult = true
+    private(set) var requestPermissionCallCount = 0
+    private(set) var sentNotifications: [SentNotification] = []
+
+    func notificationAuthorizationStatus() async -> UNAuthorizationStatus {
+        authorizationStatus
+    }
+
+    func requestNotificationPermissionIfNeeded() async -> UNAuthorizationStatus {
+        requestPermissionCallCount += 1
+        if authorizationStatus == .notDetermined {
+            authorizationStatus = requestAuthorizationResultStatus
+        }
+        return authorizationStatus
+    }
+
+    func sendNotification(title: String, body: String) async -> Bool {
+        sentNotifications.append(.init(title: title, body: body))
+        return sendResult
+    }
+}
+
+@MainActor
+final class MockICloudDriveSyncService: ICloudDriveSyncServicing {
+    var available = true
+    var storedBackupData: Data?
+    var saveError: Error?
+    var loadError: Error?
+
+    var isAvailable: Bool {
+        available
+    }
+
+    func loadBackupData() throws -> Data? {
+        if let loadError {
+            throw loadError
+        }
+        return storedBackupData
+    }
+
+    func saveBackupData(_ data: Data) throws {
+        if let saveError {
+            throw saveError
+        }
+        storedBackupData = data
     }
 }
 

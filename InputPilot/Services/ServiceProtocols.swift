@@ -1,5 +1,6 @@
 import Foundation
 import IOKit.hid
+import UserNotifications
 
 protocol PermissionServicing: AnyObject {
     func checkInputMonitoring() -> IOHIDAccessType
@@ -33,6 +34,7 @@ protocol ProfileManaging: AnyObject {
     @discardableResult
     func deleteProfile(id: String) -> Bool
     func setActiveProfile(id: String)
+    func replaceAllProfiles(_ profiles: [Profile], activeProfileId: String?)
 }
 
 @MainActor
@@ -46,6 +48,8 @@ protocol MappingStoring: AnyObject {
     func allMappings() -> [KeyboardDeviceKey: String]
     func allKnownDeviceKeys() -> [KeyboardDeviceKey]
     func validateMappings(availableEnabledIds: Set<String>) -> [MappingConflict]
+    func exportBackupEntries() -> [MappingBackupEntry]
+    func replaceAll(with entries: [MappingBackupEntry])
 }
 
 protocol ClockProviding {
@@ -65,6 +69,18 @@ protocol GlobalHotkeyServicing: AnyObject {
     func setHandler(_ handler: @escaping (HotkeyAction) -> Void)
     func register(shortcuts: [HotkeyAction: KeyCombo]) -> [HotkeyAction: String]
     func unregisterAll()
+}
+
+protocol NotificationServicing: AnyObject {
+    func notificationAuthorizationStatus() async -> UNAuthorizationStatus
+    func requestNotificationPermissionIfNeeded() async -> UNAuthorizationStatus
+    func sendNotification(title: String, body: String) async -> Bool
+}
+
+protocol ICloudDriveSyncServicing: AnyObject {
+    var isAvailable: Bool { get }
+    func loadBackupData() throws -> Data?
+    func saveBackupData(_ data: Data) throws
 }
 
 @MainActor
