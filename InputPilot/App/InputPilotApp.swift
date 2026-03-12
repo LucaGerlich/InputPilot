@@ -14,10 +14,13 @@ struct InputPilotApp: App {
             DebugLogView()
                 .environmentObject(appState)
         }
+        .defaultSize(width: 600, height: 500)
 
-        Settings {
+        Window("Settings", id: "settings") {
             SettingsView()
                 .environmentObject(appState)
         }
+        .defaultSize(width: 600, height: 600)
+        .keyboardShortcut(",", modifiers: .command)
     }
 }

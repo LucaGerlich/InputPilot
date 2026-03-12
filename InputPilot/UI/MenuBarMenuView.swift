@@ -163,8 +163,11 @@ struct MenuBarMenuView: View {
 
         Divider()
 
-        SettingsLink {
+        Button {
+            openWindow(id: "settings")
+        } label: {
             Label("Settings…", systemImage: "gearshape")
         }
+        .keyboardShortcut(",", modifiers: .command)
     }
 }
