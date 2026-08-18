@@ -9,6 +9,7 @@ This README reflects the current state of the `main` branch.
 - [What InputPilot Does](#what-inputpilot-does)
 - [Core Features](#core-features)
 - [Privacy and Security](#privacy-and-security)
+- [Installation](#installation)
 - [Requirements](#requirements)
 - [Build and Run](#build-and-run)
 - [How to Use](#how-to-use)
@@ -20,6 +21,8 @@ This README reflects the current state of the `main` branch.
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
 - [Known Limitations](#known-limitations)
+- [Releasing](#releasing)
+- [License](#license)
 
 ## What InputPilot Does
 
@@ -70,11 +73,20 @@ InputPilot does this by:
 - Debug logs contain technical status/error information only.
 - Exported logs are sanitized (sensitive tokens are redacted).
 
+## Installation
+
+1. Download the latest `InputPilot.dmg` from the [GitHub Releases page](https://github.com/LucaGerlich/InputPilot/releases).
+2. Open the DMG and drag `InputPilot.app` into `Applications`.
+3. Launch InputPilot. A keyboard icon appears in the menu bar (there is no Dock icon).
+4. Grant **Input Monitoring** permission when prompted (System Settings → Privacy & Security → Input Monitoring). InputPilot needs it to detect *which* keyboard produced a key event — it never reads or stores what you type.
+5. Press a key on each keyboard you want to configure, then open `Settings…` and assign an input source per keyboard.
+
+If macOS reports the app as damaged or from an unidentified developer, the build you downloaded is not the notarized release — download only from the official Releases page.
+
 ## Requirements
 
-- macOS (current project deployment target: `15.7`)
-- Xcode 15+
-- Swift 5
+- macOS 13.0 (Ventura) or newer
+- To build from source: Xcode 26+ (the project uses the Xcode 16+ project format and a Swift 6.2 toolchain)
 
 ## Build and Run
 
@@ -136,7 +148,7 @@ Auto-switch is active only when `isAutoSwitchActive == true`:
 
 - Debounce: `400ms` (default)
 - Cooldown after successful switch: `1500ms`
-- Modifier-only keyDown events do not trigger aggressive switching; switching waits for a stable trigger.
+- Modifier-only key presses (a lone Shift/Cmd/Option, e.g. during Cmd+Tab) do not trigger switching by default. The Settings toggle "Switch on modifier-only key presses" opts back in.
 
 ### Fingerprint and Matching
 
@@ -149,10 +161,12 @@ Auto-switch is active only when `isAutoSwitchActive == true`:
 InputPilot stores the following in `UserDefaults`:
 
 - auto-switch enabled flag
+- modifier-only switching opt-in flag
 - pause-until timestamp
 - global fallback input source ID
 - device mappings (including per-device fallback)
 - migration flag for mapping schema (legacy -> v2)
+- if mapping data ever fails to decode, the raw payload is preserved under a `.corrupted` backup key instead of being overwritten
 
 Not persisted:
 
@@ -222,7 +236,11 @@ InputPilot/
   UI/
     MenuBarMenuView.swift
     SettingsView.swift
+    AboutSection.swift
     DebugLogView.swift
+Scripts/
+  release.sh
+  ExportOptions.plist
 ```
 
 ## Architecture
@@ -264,3 +282,17 @@ InputPilot/
 - Input Monitoring permission is required.
 - Detection depends on keyboard events; no key event means no active-device update.
 - No cloud sync/profile/hotkey management in the current `main` branch.
+
+## Releasing
+
+Maintainer workflow (requires a Developer ID Application certificate, notarytool credentials, and Sparkle EdDSA keys):
+
+```bash
+Scripts/release.sh 1.0.0
+```
+
+The script archives a Release build, exports with Developer ID, notarizes and staples, packages a DMG, and generates the Sparkle appcast. Attach the DMG and `appcast.xml` to a tagged GitHub Release.
+
+## License
+
+InputPilot is licensed under the [Apache License 2.0](LICENSE).

@@ -26,7 +26,7 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 - [x] **H2 · Silent decode failure wipes all mappings on next write** — `MappingStore.swift:119,141-164`. Undecodable stored data → `loadConfigurations()` returns `[:]` silently → next `setMapping` overwrites the blob, destroying every other device's config. Fix: log the failure, back up raw data to a `.corrupted` key, refuse blind overwrite. *Effort: small*
 - [ ] **H3 · No update mechanism** — direct-download users are stranded on v1.0 forever. Integrate Sparkle 2 (or minimum: in-app "check latest release" link). *Effort: medium*
 - [x] **H4 · Repo hygiene** — no `.gitignore`; `xcuserdata`/`UserInterfaceState.xcuserstate` tracked (leaks local usernames, perpetual dirty diffs); untracked `build/` + `.DS_Store`. Fix: add Swift/Xcode .gitignore, `git rm -r --cached` the user files. *Effort: small*
-- [ ] **H5 · No shared Xcode scheme** — schemes live only in per-user xcuserdata; CI and other machines cannot run the documented `xcodebuild -scheme InputPilot` commands. Mark scheme Shared and commit it. *Effort: small*
+- [x] **H5 · No shared Xcode scheme** — schemes live only in per-user xcuserdata; CI and other machines cannot run the documented `xcodebuild -scheme InputPilot` commands. Mark scheme Shared and commit it. *Effort: small*
 
 ## Medium
 
@@ -34,10 +34,10 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 - [x] **M2 · No HID device-removal callback** — `HIDKeyboardMonitor.swift`. Unplugged keyboard stays displayed as active until another key event arrives. Register removal callback or label the UI "last seen". *Effort: medium*
 - [x] **M3 · Missing VID/PID defaults to 0** — `HIDKeyboardMonitor.swift:106-113`. Two metadata-less virtual/composite keyboards collide into one fingerprint and share a mapping. Treat missing IDs as unidentified (`Int?`), exclude from primary-match canonicalization. *Effort: medium*
 - [x] **M4 · No `NSInputMonitoringUsageDescription`** — System Settings shows no justification for the scariest macOS permission. Add `INFOPLIST_KEY_NSInputMonitoringUsageDescription`. *Effort: small*
-- [ ] **M5 · App icon set 8/10 slots empty** — 16pt slot is a leftover `AppIcon-11 (verschoben).png`; dead unreferenced `AppIcon.dataset/AppIcon.icns`. Regenerate all sizes from the 1024px master; delete strays. *Effort: small*
+- [x] **M5 · App icon set 8/10 slots empty** — 16pt slot is a leftover `AppIcon-11 (verschoben).png`; dead unreferenced `AppIcon.dataset/AppIcon.icns`. Regenerate all sizes from the 1024px master; delete strays. *Effort: small*
 - [x] **M6 · Uncommitted About/Settings work + release TODO** — `SettingsView.swift` modified, `AboutSection.swift` untracked, `AboutSection.swift:10` TODO: verify links; `supportEmail` is blank (no user contact channel). Finish, resolve TODO, commit on dev branch. *Effort: small*
 - [x] **M7 · Empty `NSHumanReadableCopyright`, no `LSApplicationCategoryType`** — Finder Get Info shows nothing. Set copyright + `public.app-category.utilities`. *Effort: small*
-- [ ] **M8 · README wrong/incomplete for end users** — says "Xcode 15+" but project format requires Xcode 26.x; no Install/Download section, no Gatekeeper note, no license section. *Effort: small*
+- [x] **M8 · README wrong/incomplete for end users** — says "Xcode 15+" but project format requires Xcode 26.x; no Install/Download section, no Gatekeeper note, no license section. *Effort: small*
 - [x] **M9 · Zero failure-path test coverage** — permission denied/revoked transitions, HID start failure (`startResult=false` never exercised), `selectInputSource` failure, corrupt-UserDefaults recovery: all 0 %. Mocks exist for each — the hooks are unused. Also: `InputPilotTests.swift` is an empty template (delete), UI test target is stock boilerplate. *Effort: medium*
 
 ## Low

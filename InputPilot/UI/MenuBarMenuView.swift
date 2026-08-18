@@ -116,8 +116,8 @@ struct MenuBarMenuView: View {
 
         Section("Active Keyboard Device") {
             if let keyboard = appState.activeKeyboardDevice {
-                Text("Vendor ID: \(keyboard.vendorId)")
-                Text("Product ID: \(keyboard.productId)")
+                Text("Vendor ID: \(KeyboardFingerprint.hardwareIdLabel(keyboard.vendorId))")
+                Text("Product ID: \(KeyboardFingerprint.hardwareIdLabel(keyboard.productId))")
                 Text("Product: \(keyboard.productName ?? "unknown")")
                 Text("Transport: \(keyboard.transport ?? "unknown")")
                 Text("Location ID: \(keyboard.locationId.map(String.init) ?? "unknown")")
