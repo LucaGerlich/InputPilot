@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InputPilot — the layout follows the keyboard</title>
+<meta name="description" content="A macOS menu bar app that detects which keyboard you are typing on and switches the input source to match. Free, open source, notarized.">
+<link rel="icon" href="icon.png">
+<meta property="og:title" content="InputPilot — the layout follows the keyboard">
+<meta property="og:description" content="Detects which keyboard you are typing on and switches the macOS input source to match.">
+<meta property="og:image" content="https://lucagerlich.github.io/InputPilot/icon.png">
+<meta property="og:url" content="https://lucagerlich.github.io/InputPilot/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<style>
+	:root {
+		--bg:#08090B; --panel:#0D0F13; --panel-2:#101317;
+		--line:#1B2029; --line-2:#262C36;
+		--fg:#D6DAE1; --dim:#727A86; --faint:#4A515C;
+		--orange:#FF6B2C; --blue:#5B6CFF; --green:#3FB950;
+	}
+	* { box-sizing:border-box; }
+	html { scroll-behavior:smooth; }
+	body {
+		margin:0; background:var(--bg); color:var(--fg);
+		font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+		font-size:14px; line-height:1.65; -webkit-font-smoothing:antialiased;
+	}
+	a { color:var(--blue); text-decoration:none; }
+	a:hover { text-decoration:underline; }
+	.wrap { width:min(100% - 2rem, 1180px); margin-inline:auto; }
+	.narrow { max-width:78ch; }
+
+	/* ---- top bar ---- */
+	.top { border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(8,9,11,.9); backdrop-filter:blur(8px); z-index:20; }
+	.top .wrap { display:flex; align-items:center; gap:1.5rem; height:56px; }
+	.logo { color:var(--orange); font-weight:700; font-size:1.05rem; letter-spacing:-0.01em; }
+	.top nav { display:flex; gap:1.4rem; margin-left:1rem; font-size:.85rem; }
+	.top nav a { color:var(--dim); }
+	.top nav a:hover { color:var(--fg); text-decoration:none; }
+	.top .right { margin-left:auto; }
+	.ghost {
+		border:1px solid var(--line-2); color:var(--fg); padding:.42rem .9rem;
+		border-radius:6px; font-size:.85rem; display:inline-block;
+	}
+	.ghost:hover { border-color:var(--dim); text-decoration:none; }
+	@media (max-width:760px){ .top nav { display:none; } }
+
+	/* ---- hero ---- */
+	.hero { padding:3.5rem 0 4rem; text-align:center; }
+	.term {
+		border:1px solid var(--line); border-radius:10px; background:var(--panel);
+		overflow:hidden; box-shadow:0 24px 60px -30px #000;
+		/* the headline sat flush against the board; let the hero breathe */
+		margin-bottom:clamp(2.75rem, 5.5vw, 4.75rem);
+	}
+	.term-bar {
+		display:flex; align-items:center; gap:.5rem; padding:.6rem .85rem;
+		border-bottom:1px solid var(--line); background:var(--panel-2);
+	}
+	.dot { width:11px; height:11px; border-radius:50%; background:#2C323B; }
+	.dot:nth-child(1){ background:#FF5F57; } .dot:nth-child(2){ background:#FEBC2E; } .dot:nth-child(3){ background:#28C840; }
+	.term-title { margin-left:auto; margin-right:auto; color:var(--dim); font-size:.8rem; padding-right:44px; }
+
+	.art-pad { padding:2.2rem .75rem 1.6rem; overflow-x:auto; }
+	@media (max-width:520px){ .art-pad { padding:1.4rem .3rem 1rem; } }
+	.art-stack { display:grid; place-items:center; }
+	.art-stack > pre.art { grid-area:1/1; opacity:0; transition:opacity .34s ease; pointer-events:none; }
+	.art-stack > pre.art.on { opacity:1; }
+	pre.art {
+		margin:0; display:inline-block; text-align:left; color:#6C7480;
+		/* 75 chars wide at ~0.6em each, so this fills the terminal without overflowing */
+		font-size:clamp(3.1px, 0.86vw, 11.4px); line-height:1.0; white-space:pre; letter-spacing:0;
+	}
+	/* every legend is addressable so keys can light up and swap on layout change */
+	pre.art i { font-style:normal; color:#8E97A5; transition:color .09s ease, text-shadow .09s ease; }
+	
+	pre.art i.lit { color:#FFF; text-shadow:0 0 .6em var(--blue), 0 0 1.4em var(--blue); }
+	pre.art i.flip { color:var(--orange); text-shadow:0 0 .7em var(--orange); }
+	.layout-state { color:var(--faint); }
+	.layout-state b { font-weight:400; color:var(--faint); transition:color .25s ease; }
+	.layout-state b.on { color:var(--blue); }
+	.legend-row { display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap; color:var(--dim); font-size:.78rem; padding:0 1rem 1.4rem; }
+	.legend-row span b { color:var(--orange); font-weight:400; }
+
+	.tagline { color:var(--dim); margin:1.5rem auto 1.9rem; max-width:62ch; font-size:.98rem; }
+	.tagline strong { color:var(--fg); font-weight:600; }
+	h1 { font-size:clamp(1.5rem,3.6vw,2.15rem); letter-spacing:-0.02em; margin:0 0 .6rem; text-wrap:balance; }
+	h1 .sub { display:block; color:var(--blue); }
+	.cta { display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap; }
+	.btn {
+		background:var(--blue); color:#fff; padding:.72rem 1.35rem; border-radius:7px;
+		font-size:.92rem; font-weight:600; min-height:46px; display:inline-flex; align-items:center; gap:.5rem;
+	}
+	.btn:hover { filter:brightness(1.1); text-decoration:none; }
+	.btn.alt { background:transparent; color:var(--fg); border:1px solid var(--line-2); }
+	.btn.alt:hover { border-color:var(--dim); }
+	.ver { color:var(--faint); font-size:.8rem; margin-top:1rem; }
+
+	/* ---- sections ---- */
+	section { padding:3.5rem 0; border-top:1px solid var(--line); }
+	h2 { font-size:1.15rem; margin:0 0 .4rem; letter-spacing:-0.01em; }
+	h2::before { content:"# "; color:var(--faint); }
+	.lede { color:var(--dim); margin:0 0 2rem; max-width:74ch; }
+
+	/* log panel */
+	.panel { border:1px solid var(--line); border-radius:8px; background:var(--panel); overflow:hidden; }
+	.panel-head {
+		display:flex; align-items:center; gap:.7rem; padding:.55rem .85rem;
+		border-bottom:1px solid var(--line); background:var(--panel-2); font-size:.82rem; color:var(--dim);
+	}
+	.tag { border:1px solid var(--orange); color:var(--orange); font-size:.68rem; padding:0 .35rem; border-radius:3px; letter-spacing:.06em; }
+	.panel-head .r { margin-left:auto; color:var(--faint); }
+	.log { padding:.9rem .85rem; font-size:.8rem; line-height:1.85; overflow-x:auto; }
+	.log div { white-space:nowrap; }
+	.t { color:var(--faint); }
+	.i { color:var(--blue); } .w { color:var(--orange); } .c { color:var(--dim); }
+	.ok { color:var(--green); }
+
+	/* device cards */
+	.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; margin-top:1.1rem; }
+	.card { border:1px solid var(--line); border-radius:8px; background:var(--panel); overflow:hidden; }
+	.card-head { padding:.5rem .8rem; border-bottom:1px solid var(--line); background:var(--panel-2); font-size:.82rem; }
+	.row { display:flex; justify-content:space-between; gap:1rem; padding:.36rem .8rem; font-size:.82rem; }
+	.row span:first-child { color:var(--dim); }
+	.row:not(:last-child) { border-bottom:1px solid rgba(27,32,41,.6); }
+	.muted .card-head, .muted .row span { color:var(--faint) !important; }
+
+	/* steps */
+	.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
+	@media (max-width:800px){ .steps { grid-template-columns:1fr; } }
+	.step { border:1px solid var(--line); border-radius:8px; padding:1.1rem; background:var(--panel); }
+	.step .n { color:var(--orange); font-size:.78rem; }
+	.step h3 { margin:.4rem 0 .35rem; font-size:.95rem; }
+	.step p { margin:0; color:var(--dim); font-size:.86rem; }
+
+	ul.checks { list-style:none; padding:0; margin:1rem 0 0; }
+	ul.checks li { color:var(--dim); padding-left:1.5rem; position:relative; margin-bottom:.55rem; }
+	ul.checks li::before { content:"›"; position:absolute; left:.3rem; color:var(--green); }
+	ul.checks b { color:var(--fg); font-weight:600; }
+
+	details { border-bottom:1px solid var(--line); padding:.85rem 0; }
+	summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:1rem; font-size:.92rem; }
+	summary::-webkit-details-marker { display:none; }
+	summary::after { content:"[+]"; color:var(--faint); }
+	details[open] summary::after { content:"[-]"; }
+	details p { color:var(--dim); margin:.7rem 0 0; font-size:.88rem; }
+
+	footer { border-top:1px solid var(--line); padding:1.1rem 0; color:var(--faint); font-size:.78rem; }
+	footer .wrap { display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; align-items:center; }
+	footer a { color:var(--faint); }
+	footer .r { margin-left:auto; display:flex; gap:1.2rem; flex-wrap:wrap; }
+
+	:focus-visible { outline:2px solid var(--orange); outline-offset:3px; }
+	@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto;} .blink{animation:none!important;} }
+	.blink { animation:blink 1.15s steps(2) infinite; }
+	@keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:.15} }
+</style>
+</head>
+<body>
+
+<div class="top">
+	<div class="wrap">
+		<span class="logo">InputPilot</span>
+		<nav>
+			<a href="#how">How it works</a>
+			<a href="#privacy">Privacy</a>
+			<a href="#faq">FAQ</a>
+			<a href="https://github.com/LucaGerlich/InputPilot">Source</a>
+		</nav>
+		<span class="right"><a class="ghost" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download</a></span>
+	</div>
+</div>
+
+<div class="wrap hero">
+	<div class="term">
+		<div class="term-bar">
+			<span class="dot"></span><span class="dot"></span><span class="dot"></span>
+			<span class="term-title">inputpilot — <span id="devname">Magic Keyboard</span></span>
+		</div>
+		<div class="art-pad">
+<div class="art-stack">
+<pre class="art on" id="kbd-iso" aria-label="An ISO keyboard rendered in ASCII">
+<i data-key="0-0"> =========.</i> <i data-key="0-1">-========.</i> <i data-key="0-2">:========-</i> <i data-key="0-3">.========-</i> <i data-key="0-4"> ========= </i><i data-key="0-5"> =========.</i> <i data-key="0-6">-========.</i> <i data-key="0-7">:========-</i> <i data-key="0-8">.========-</i> <i data-key="0-9"> ========= </i><i data-key="0-10"> =========.</i> <i data-key="0-11">-========.</i> <i data-key="0-12">:========-</i> <i data-key="0-13">.==================== </i>
+<i data-key="0-0">:@@@@=@@@@+</i> <i data-key="0-1">@@@@%*@@@%</i> <i data-key="0-2">@@@@++@@@@</i> <i data-key="0-3">#@@@+=%@@@</i> <i data-key="0-4">=@@@@%*@@@:</i><i data-key="0-5">:@@@*==%@@+</i> <i data-key="0-6">@@@@==@@@%</i> <i data-key="0-7">@@@++++@@@</i> <i data-key="0-8">#@@@+=%@@@</i> <i data-key="0-9">=@@@+=%@@@:</i><i data-key="0-10">:@@@#=#@@@+</i> <i data-key="0-11">@@@*-+@@@%</i> <i data-key="0-12">@@@@%+@@@@</i> <i data-key="0-13">#@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="0-0">:@@@: .@@@+</i> <i data-key="0-1">@@@-  @@@%</i> <i data-key="0-2">@@@::. @@@</i> <i data-key="0-3">#@@+-..@@@</i> <i data-key="0-4">=@@@*  @@@:</i><i data-key="0-5">:@@@ .:%@@+</i> <i data-key="0-6">@@@ ::+@@%</i> <i data-key="0-7">@@@=- -@@@</i> <i data-key="0-8">#@@- : @@@</i> <i data-key="0-9">=@@- = %@@:</i><i data-key="0-10">:@@% + *@@+</i> <i data-key="0-11">@@@ = %@@%</i> <i data-key="0-12">@@@@*#@@@@</i> <i data-key="0-13">#@@@@@++@+@++*#%@@@@@:</i>
+<i data-key="0-0">:@@@:@-%@@+</i> <i data-key="0-1">@@@%- @@@%</i> <i data-key="0-2">@@@@= +@@@</i> <i data-key="0-3">#@@@#..@@@</i> <i data-key="0-4">=@@= . %@@:</i><i data-key="0-5">:@@@.- =@@+</i> <i data-key="0-6">@@@ . :@@%</i> <i data-key="0-7">@@@@::@@@@</i> <i data-key="0-8">#@@= ..@@@</i> <i data-key="0-9">=@@* . *@@:</i><i data-key="0-10">:@@+ @ =@@+</i> <i data-key="0-11">@@@ + +@@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@..-.-:=..#@@@@@:</i>
+<i data-key="0-0">:@@@@@@@@@+</i> <i data-key="0-1">@@@@- @@@%</i> <i data-key="0-2">@@@. .:@@@</i> <i data-key="0-3">#@@= . @@@</i> <i data-key="0-4">=@@*=. #@@:</i><i data-key="0-5">:@@% . *@@+</i> <i data-key="0-6">@@@.. -@@%</i> <i data-key="0-7">@@@@ %@@@@</i> <i data-key="0-8">#@@- . @@@</i> <i data-key="0-9">=@@# . @@@:</i><i data-key="0-10">:@@@ . %@@+</i> <i data-key="0-11">@@@ +. @@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@%%%@%@@%@%@@@@@:</i>
+<i data-key="0-0">:@@@@@@@@@+</i> <i data-key="0-1">@@@@@@@@@%</i> <i data-key="0-2">@@@@@@@@@@</i> <i data-key="0-3">#@@@@@@@@@</i> <i data-key="0-4">=@@@@@@@@@:</i><i data-key="0-5">:@@@@@@@@@+</i> <i data-key="0-6">@@@@@@@@@%</i> <i data-key="0-7">@@@@@@@@@@</i> <i data-key="0-8">#@@@@@@@@@</i> <i data-key="0-9">=@@@@@@@@@:</i><i data-key="0-10">:@@@@%@@@@+</i> <i data-key="0-11">@@@@@%@@@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="0-0"> ......... </i> <i data-key="0-1">......... </i> <i data-key="0-2"> .........</i> <i data-key="0-3"> .........</i> <i data-key="0-4"> ......... </i><i data-key="0-5"> ......... </i> <i data-key="0-6">......... </i> <i data-key="0-7"> .........</i> <i data-key="0-8"> .........</i> <i data-key="0-9"> ......... </i><i data-key="0-10"> ......... </i> <i data-key="0-11">......... </i> <i data-key="0-12"> .........</i> <i data-key="0-13"> .................... </i>
+<i data-key="1-0"> %@@@@@@@@@@@@@#</i> <i data-key="1-1">:@@@@@@@@%.</i><i data-key="1-2"> %@@@@@@@@:</i> <i data-key="1-3">#@@@@@@@@=</i> <i data-key="1-4">*@@@@@@@@#</i> <i data-key="1-5">=@@@@@@@@#</i> <i data-key="1-6">:@@@@@@@@%.</i><i data-key="1-7"> %@@@@@@@@:</i> <i data-key="1-8">#@@@@@@@@=</i> <i data-key="1-9">*@@@@@@@@#</i> <i data-key="1-10">=@@@@@@@@#</i> <i data-key="1-11">:@@@%@%@@%.</i><i data-key="1-12"> %@@@@@@@@:</i> <i data-key="enter">#@@@@@@@@@@@@@@:</i>
+<i data-key="1-0">:@@@@@@@@@@@@@@@</i> <i data-key="1-1">=@@=...+@@:</i><i data-key="1-2">:@:##.+@.@+</i> <i data-key="1-3">@@#...:@@%</i> <i data-key="1-4">@@#...:@@@</i> <i data-key="1-5">#@@....+@@</i> <i data-key="1-6">=@@=...=@@:</i><i data-key="1-7">:@@-=@+:@@+</i> <i data-key="1-8">@@@@:*@@@%</i> <i data-key="1-9">@@@-..-@@@</i> <i data-key="1-10">#@@:..:@@@</i> <i data-key="1-11">=@@#:*:%@@:</i><i data-key="1-12">:@@@@=@@@@+</i> <i data-key="enter">@@@@@@@@@@@@@@@:</i>
+<i data-key="1-0">:@@@@==#-*-=@@@@</i> <i data-key="1-1">=@# %@* @@:</i><i data-key="1-2">:@.:.  = @+</i> <i data-key="1-3">@@+ ==*@@%</i> <i data-key="1-4">@@+ ++ *@@</i> <i data-key="1-5">#@@@= @@@@</i> <i data-key="1-6">=@@@%. %@@:</i><i data-key="1-7">:@@.:@- @@+</i> <i data-key="1-8">@@@@ -@@@%</i> <i data-key="1-9">@@: @@..@@</i> <i data-key="1-10">#@@ -# -@@</i> <i data-key="1-11">=@@ =@..@@:</i><i data-key="1-12">:@@*: :+@@+</i> <i data-key="enter">@@-=-+=:+-*:-@@:</i>
+<i data-key="1-0">:@@@@*+:--:-@@@@</i> <i data-key="1-1">=@# *=- @@:</i><i data-key="1-2">:@+  %  =@+</i> <i data-key="1-3">@@+ ==*@@%</i> <i data-key="1-4">@@+ - :@@@</i> <i data-key="1-5">#@@@= @@@@</i> <i data-key="1-6">=@@* :@@@@:</i><i data-key="1-7">:@@..@- @@+</i> <i data-key="1-8">@@@@ -@@@%</i> <i data-key="1-9">@@. @@..@@</i> <i data-key="1-10">#@@  :-@@@</i> <i data-key="1-11">=@@ =@..@@:</i><i data-key="1-12">:@@%# *%@@+</i> <i data-key="enter">@@:---+-#.+::@@:</i>
+<i data-key="1-0">:@@@@@@@@@@@@@@@</i> <i data-key="1-1">=@@*... %@:</i><i data-key="1-2">:@@.:@- @@+</i> <i data-key="1-3">@@* ...@@%</i> <i data-key="1-4">@@* @% +@@</i> <i data-key="1-5">#@@@+.@@@@</i> <i data-key="1-6">=@@. ..=@@:</i><i data-key="1-7">:@@*...+@@+</i> <i data-key="1-8">@@@@.+@@@%</i> <i data-key="1-9">@@@....%@@</i> <i data-key="1-10">#@@.+@@@@@</i> <i data-key="1-11">=@@. - =@@:</i><i data-key="1-12">:@@@@@@@@@+</i> <i data-key="enter">@@@@@@@@@@@@@@@:</i>
+<i data-key="1-0">.@@@@@@@@@@@@@@@</i> <i data-key="1-1">-@@@@@@@@@:</i><i data-key="1-2">.@@@@@@@@@=</i> <i data-key="1-3">@@@@@@@@@#</i> <i data-key="1-4">@@@@@@@@@@</i> <i data-key="1-5">*@@@@@@@@@</i> <i data-key="1-6">-@@@@@@@@@:</i><i data-key="1-7">.@@@@@@@@@=</i> <i data-key="1-8">@@@@@@@@@#</i> <i data-key="1-9">@@@@@@@@@@</i> <i data-key="1-10">*@@@@@@@@@</i> <i data-key="1-11">-@@@#*%@@@:</i><i data-key="1-12">.@@@@@@@@@=</i> <i data-key="enter">@@@@@@@@@@@@@@@:</i>
+ ...............     ......     ......     ......     ......      ......     ......     ......     ......     ......      ......     ......     ......    -@@@@@@@@@@@@:
+<i data-key="2-0">.@@@@@@@@@@@@@@@@@@</i> <i data-key="2-1">*@@@@@@@@@</i> <i data-key="2-2">=@@@@@@@@@:</i><i data-key="2-3">.@@@@@@@@@+</i> <i data-key="2-4">@@@@@@@@@#</i> <i data-key="2-5">@@@@@@@@@@</i> <i data-key="2-6">*@@@@@@@@@</i> <i data-key="2-7">=@@@@@@@@@:</i><i data-key="2-8">.@@@@@@@@@+</i> <i data-key="2-9">@@@@@@@@@#</i> <i data-key="2-10">@@@%++%@@@</i> <i data-key="2-11">*@@@+*#@@@</i> <i data-key="2-12">=@@@@@@@@@:</i><i data-key="enter">:@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@@@@@@@@@@@@@@@</i> <i data-key="2-1">#@@@. %@@@</i> <i data-key="2-2">=@@- . *@@:</i><i data-key="2-3">:@@. . =@@+</i> <i data-key="2-4">@@@ ..:@@%</i> <i data-key="2-5">@@%... #@@</i> <i data-key="2-6">#@@ #@.-@@</i> <i data-key="2-7">=@@@@* @@@:</i><i data-key="2-8">:@@::# :@@+</i> <i data-key="2-9">@@@ #@@@@%</i> <i data-key="2-10">@@@=. -@@@</i> <i data-key="2-11">#@@@:.#@@@</i> <i data-key="2-12">=@@@-- %@@:</i><i data-key="enter">:@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@-=#.=..-.%@@@@</i> <i data-key="2-1">#@@= : @@@</i> <i data-key="2-2">=@@- .:#@@:</i><i data-key="2-3">:@@.:@+ @@+</i> <i data-key="2-4">@@@ ..+@@%</i> <i data-key="2-5">@@:.@=:+@@</i> <i data-key="2-6">#@@ .. -@@</i> <i data-key="2-7">=@@@@* @@@:</i><i data-key="2-8">:@@.  :@@@+</i> <i data-key="2-9">@@@ #@@@@%</i> <i data-key="2-10">@@- #% :@@</i> <i data-key="2-11">#@@%  -@@@</i> <i data-key="2-12">=@@= . +@@:</i><i data-key="enter">:@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@*=++=+@+=%@@@@</i> <i data-key="2-1">#@% .. =@@</i> <i data-key="2-2">=@@:-# :@@:</i><i data-key="2-3">:@@..#: @@+</i> <i data-key="2-4">@@@ #@@@@%</i> <i data-key="2-5">@@= *= .@@</i> <i data-key="2-6">#@@ #@ -@@</i> <i data-key="2-7">=@@-:= @@@:</i><i data-key="2-8">:@@. # -@@+</i> <i data-key="2-9">@@@ +##@@%</i> <i data-key="2-10">@@..@@. @@</i> <i data-key="2-11">#@@  . #@@</i> <i data-key="2-12">=@@-   +@@:</i><i data-key="enter">:@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@@@@@@@@@@@@@@@</i> <i data-key="2-1">#@*=@@*-@@</i> <i data-key="2-2">=@@%::-@@@:</i><i data-key="2-3">:@@+::=@@@+</i> <i data-key="2-4">@@@:%@@@@%</i> <i data-key="2-5">@@@*::-%@@</i> <i data-key="2-6">#@@:%@=*@@</i> <i data-key="2-7">=@@%-:#@@@:</i><i data-key="2-8">:@@++@#:%@+</i> <i data-key="2-9">@@@-::-@@%</i> <i data-key="2-10">@@%....#@@</i> <i data-key="2-11">#@+ ##:.@@</i> <i data-key="2-12">=@@*+=%@@@:</i><i data-key="enter">:@@@@@@@@@@@@:</i>
+<i data-key="2-0"> #################+</i> <i data-key="2-1">-########*</i> <i data-key="2-2">.######### </i><i data-key="2-3"> #########:</i> <i data-key="2-4">*########=</i> <i data-key="2-5">+########+</i> <i data-key="2-6">-########*</i> <i data-key="2-7">.######### </i><i data-key="2-8"> #########:</i> <i data-key="2-9">*########=</i> <i data-key="2-10">+########+</i> <i data-key="2-11">-########*</i> <i data-key="2-12">.######### </i><i data-key="enter">.############:</i>
+<i data-key="3-0"> :::::::::::: </i><i data-key="3-1"> ::::::::: </i> <i data-key="3-2">.:::::::: </i> <i data-key="3-3">.::::::::.</i> <i data-key="3-4"> ::::::::.</i> <i data-key="3-5"> ::::::::: </i><i data-key="3-6"> ::::::::: </i> <i data-key="3-7">.:::::::: </i> <i data-key="3-8">.::::::::.</i> <i data-key="3-9"> ::::::::.</i> <i data-key="3-10"> ::::::::: </i><i data-key="3-11"> ::::::::: </i> <i data-key="3-12">.:::::::::::::::::::::::::::: </i>
+<i data-key="3-0">:@@@@@@@@@@@@:</i><i data-key="3-1">:@@@@@@@@@+</i> <i data-key="3-2">@@#%@@#@@%</i> <i data-key="3-3">@@@#@@#@@@</i> <i data-key="3-4">#@@@%*@@@@</i> <i data-key="3-5">=@@#@@@#@@:</i><i data-key="3-6">:@@%##%@@@+</i> <i data-key="3-7">@@%%@@#@@%</i> <i data-key="3-8">@@%#@@#%@@</i> <i data-key="3-9">#@@@@@@@@@</i> <i data-key="3-10">=@@@@@@@@@:</i><i data-key="3-11">:@@@@@@@@@+</i> <i data-key="3-12">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="3-0">:@%*%@##***#@:</i><i data-key="3-1">:@@@#-.+@@+</i> <i data-key="3-2">@@* *. @@%</i> <i data-key="3-3">@@@ .. @@@</i> <i data-key="3-4">#@@ .: +@@</i> <i data-key="3-5">=@@ :@..@@:</i><i data-key="3-6">:@@. : .@@+</i> <i data-key="3-7">@@: =# @@%</i> <i data-key="3-8">@@. =+  @@</i> <i data-key="3-9">#@@@%#@@@@</i> <i data-key="3-10">=@@@@@@@@@:</i><i data-key="3-11">:@@@%**@@@+</i> <i data-key="3-12">@@@@@@@@@@*##%##*#*%@@@@@@@@@:</i>
+<i data-key="3-0">:@-::=::.#:%@:</i><i data-key="3-1">:@@* .+@@@+</i> <i data-key="3-2">@@@* .@@@%</i> <i data-key="3-3">@@@@  @@@@</i> <i data-key="3-4">#@* @@@@@@</i> <i data-key="3-5">=@@* * %@@:</i><i data-key="3-6">:@@. . :@@+</i> <i data-key="3-7">@@:  : @@%</i> <i data-key="3-8">@@..  . @@</i> <i data-key="3-9">#@@@*.@@@@</i> <i data-key="3-10">=@@@%.@@@@:</i><i data-key="3-11">:@@@%-=@@@+</i> <i data-key="3-12">@@@@@@@@@@::.:..=@:@@@@@@@@@@:</i>
+<i data-key="3-0">:@#+#@###@#@@:</i><i data-key="3-1">:@@@@%-+@@+</i> <i data-key="3-2">@@@@ =@@@%</i> <i data-key="3-3">@@% :: %@@</i> <i data-key="3-4">#@@ .- =@@</i> <i data-key="3-5">=@@@. :@@@:</i><i data-key="3-6">:@@. -. @@+</i> <i data-key="3-7">@@:.%  @@%</i> <i data-key="3-8">@@.-  - @@</i> <i data-key="3-9">#@@@%@@@@@</i> <i data-key="3-10">=@@@@@@@@@:</i><i data-key="3-11">:@@@@@@@@@+</i> <i data-key="3-12">@@@@@@@@@@*##%##@@#@@@@@@@@@@:</i>
+<i data-key="3-0">:@@@@@@@@@@@@:</i><i data-key="3-1">:@@@@@@@@@+</i> <i data-key="3-2">@@@@#%@@@%</i> <i data-key="3-3">@@%#@@#%@@</i> <i data-key="3-4">#@@@#*%@@@</i> <i data-key="3-5">=@@@@*@@@@:</i><i data-key="3-6">:@@#**#@@@+</i> <i data-key="3-7">@@%#@@*@@%</i> <i data-key="3-8">@@#%%#%#@@</i> <i data-key="3-9">#@@@@@@@@@</i> <i data-key="3-10">=@@@@@@@@@:</i><i data-key="3-11">:@@@@@@@@@+</i> <i data-key="3-12">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="3-0"> :----------: </i><i data-key="3-1"> :-------- </i> <i data-key="3-2">:--------.</i> <i data-key="3-3">.--------:</i> <i data-key="3-4"> --------:</i> <i data-key="3-5"> --------: </i><i data-key="3-6"> :-------- </i> <i data-key="3-7">:--------.</i> <i data-key="3-8">.--------:</i> <i data-key="3-9"> --------:</i> <i data-key="3-10"> --------: </i><i data-key="3-11"> :-------- </i> <i data-key="3-12">:---------------------------: </i>
+<i data-key="4-0"> ************ </i><i data-key="4-1"> ************ </i><i data-key="4-2"> ************ </i><i data-key="4-3"> ******************************************************************** </i><i data-key="4-4"> ************ </i><i data-key="4-5"> ************ </i><i data-key="4-6"> ************ </i><i data-key="4-7"> ************ </i>
+<i data-key="4-0">:@@@@@@@@@@@@:</i><i data-key="4-1">:@@@@@@@@@@@@:</i><i data-key="4-2">:@@@@@@@@@@@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@@@@@@@@@@@:</i><i data-key="4-5">:@@@@@@@@@@@@:</i><i data-key="4-6">:@@@@@@@@@@@@:</i><i data-key="4-7">:@@@@@@@@@@@@:</i>
+<i data-key="4-0">:@@=+=+==+%@@:</i><i data-key="4-1">:@@@=++=*-%@@:</i><i data-key="4-2">:@@*+*==+=*@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@*+*==+=*@@:</i><i data-key="4-5">:@@@=++=*-%@@:</i><i data-key="4-6">:@@=+=+==+%@@:</i><i data-key="4-7">:@@@@=*=*@@@@:</i>
+<i data-key="4-0">:@*-++*..:=%@:</i><i data-key="4-1">:@@*-::=%:@@@:</i><i data-key="4-2">:@@-==..:=-@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@-==..:=-@@:</i><i data-key="4-5">:@@*-::=%:@@@:</i><i data-key="4-6">:@*-++*..:=%@:</i><i data-key="4-7">:@@@@.#. @@@@:</i>
+<i data-key="4-0">:@@@@@@@@@@@@:</i><i data-key="4-1">:@@@@@@@@@@@@:</i><i data-key="4-2">:@@@@@@@@@@@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@@@@@@@@@@@:</i><i data-key="4-5">:@@@@@@@@@@@@:</i><i data-key="4-6">:@@@@@@@@@@@@:</i><i data-key="4-7">:@@@@@@@@@@@@:</i>
+<i data-key="4-0">.@@@@@@@@@@@@:</i><i data-key="4-1">.@@@@@@@@@@@@:</i><i data-key="4-2">.@@@@@@@@@@@@:</i><i data-key="4-3">.@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">.@@@@@@@@@@@@:</i><i data-key="4-5">.@@@@@@@@@@@@:</i><i data-key="4-6">.@@@@@@@@@@@@:</i><i data-key="4-7">.@@@@@@@@@@@@:</i>
+ ::::::::::::  ::::::::::::  ::::::::::::  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  ::::::::::::  ::::::::::::  ::::::::::::  :::::::::::: 
+</pre>
+<pre class="art" id="kbd-ansi" aria-hidden="true">
+<i data-key="0-0"> =========.</i> <i data-key="0-1">-========.</i> <i data-key="0-2">:========-</i> <i data-key="0-3">.========-</i> <i data-key="0-4"> ========= </i><i data-key="0-5"> =========.</i> <i data-key="0-6">-========.</i> <i data-key="0-7">:========-</i> <i data-key="0-8">.========-</i> <i data-key="0-9"> ========= </i><i data-key="0-10"> =========.</i> <i data-key="0-11">-========.</i> <i data-key="0-12">:========-</i> <i data-key="0-13">.==================== </i>
+<i data-key="0-0">:@@@%+@@@@+</i> <i data-key="0-1">@@@@%*@@@%</i> <i data-key="0-2">@@@@++@@@@</i> <i data-key="0-3">#@@@+=%@@@</i> <i data-key="0-4">=@@@@%*@@@:</i><i data-key="0-5">:@@@*==%@@+</i> <i data-key="0-6">@@@@==@@@%</i> <i data-key="0-7">@@@++++@@@</i> <i data-key="0-8">#@@@+=%@@@</i> <i data-key="0-9">=@@@+=%@@@:</i><i data-key="0-10">:@@@#=#@@@+</i> <i data-key="0-11">@@@@@@@@@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="0-0">:@@@@=@@@@+</i> <i data-key="0-1">@@@-  @@@%</i> <i data-key="0-2">@@@::. @@@</i> <i data-key="0-3">#@@+-..@@@</i> <i data-key="0-4">=@@@*  @@@:</i><i data-key="0-5">:@@@ .:%@@+</i> <i data-key="0-6">@@@ ::+@@%</i> <i data-key="0-7">@@@=- -@@@</i> <i data-key="0-8">#@@- : @@@</i> <i data-key="0-9">=@@- = %@@:</i><i data-key="0-10">:@@% + *@@+</i> <i data-key="0-11">@@@@==@@@%</i> <i data-key="0-12">@@@:...@@@</i> <i data-key="0-13">#@@@@@++@+@++*#%@@@@@:</i>
+<i data-key="0-0">:@@@@@@@@@+</i> <i data-key="0-1">@@@%- @@@%</i> <i data-key="0-2">@@@@= +@@@</i> <i data-key="0-3">#@@@#..@@@</i> <i data-key="0-4">=@@= . %@@:</i><i data-key="0-5">:@@@.- =@@+</i> <i data-key="0-6">@@@ . :@@%</i> <i data-key="0-7">@@@@::@@@@</i> <i data-key="0-8">#@@= ..@@@</i> <i data-key="0-9">=@@* . *@@:</i><i data-key="0-10">:@@+ @ =@@+</i> <i data-key="0-11">@@@@**@@@%</i> <i data-key="0-12">@@@:...@@@</i> <i data-key="0-13">#@@@@@..-.-:=..#@@@@@:</i>
+<i data-key="0-0">:@@@@@@@@@+</i> <i data-key="0-1">@@@@- @@@%</i> <i data-key="0-2">@@@. .:@@@</i> <i data-key="0-3">#@@= . @@@</i> <i data-key="0-4">=@@*=. #@@:</i><i data-key="0-5">:@@% . *@@+</i> <i data-key="0-6">@@@.. -@@%</i> <i data-key="0-7">@@@@ %@@@@</i> <i data-key="0-8">#@@- . @@@</i> <i data-key="0-9">=@@# . @@@:</i><i data-key="0-10">:@@@ . %@@+</i> <i data-key="0-11">@@@@@@@@@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@%%%@%@@%@%@@@@@:</i>
+<i data-key="0-0">:@@@@@@@@@+</i> <i data-key="0-1">@@@@@@@@@%</i> <i data-key="0-2">@@@@@@@@@@</i> <i data-key="0-3">#@@@@@@@@@</i> <i data-key="0-4">=@@@@@@@@@:</i><i data-key="0-5">:@@@@@@@@@+</i> <i data-key="0-6">@@@@@@@@@%</i> <i data-key="0-7">@@@@@@@@@@</i> <i data-key="0-8">#@@@@@@@@@</i> <i data-key="0-9">=@@@@@@@@@:</i><i data-key="0-10">:@@@@%@@@@+</i> <i data-key="0-11">@@@@@@@@@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="0-0"> ......... </i> <i data-key="0-1">......... </i> <i data-key="0-2"> .........</i> <i data-key="0-3"> .........</i> <i data-key="0-4"> ......... </i><i data-key="0-5"> ......... </i> <i data-key="0-6">......... </i> <i data-key="0-7"> .........</i> <i data-key="0-8"> .........</i> <i data-key="0-9"> ......... </i><i data-key="0-10"> ......... </i> <i data-key="0-11">......... </i> <i data-key="0-12"> .........</i> <i data-key="0-13"> .................... </i>
+<i data-key="1-0"> %@@@@@@@@@@@@@#</i> <i data-key="1-1">:@@@@@@@@%.</i><i data-key="1-2"> %@@@@@@@@:</i> <i data-key="1-3">#@@@@@@@@=</i> <i data-key="1-4">*@@@@@@@@#</i> <i data-key="1-5">=@@@@@@@@#</i> <i data-key="1-6">:@@@@@@@@%.</i><i data-key="1-7"> %@@@@@@@@:</i> <i data-key="1-8">#@@@@@@@@=</i> <i data-key="1-9">*@@@@@@@@#</i> <i data-key="1-10">=@@@@@@@@#</i> <i data-key="1-11">:@@@%%%@@%.</i><i data-key="1-12"> %@@%%%@@@:</i> <i data-key="1-13">#@@@@@@@@@@@@@%.</i>
+<i data-key="1-0">:@@@@@@@@@@@@@@@</i> <i data-key="1-1">=@@=...+@@:</i><i data-key="1-2">:@:##.+@.@+</i> <i data-key="1-3">@@#...:@@%</i> <i data-key="1-4">@@#...:@@@</i> <i data-key="1-5">#@@....+@@</i> <i data-key="1-6">=@@:+@=-@@:</i><i data-key="1-7">:@@-=@+:@@+</i> <i data-key="1-8">@@@@:*@@@%</i> <i data-key="1-9">@@@-..-@@@</i> <i data-key="1-10">#@@:..:@@@</i> <i data-key="1-11">=@@@- =@@@:</i><i data-key="1-12">:@@@= -@@@+</i> <i data-key="1-13">@@@@@@*+@@@@@@@:</i>
+<i data-key="1-0">:@@@@==#-*-=@@@@</i> <i data-key="1-1">=@# %@* @@:</i><i data-key="1-2">:@.:.  = @+</i> <i data-key="1-3">@@+ ==*@@%</i> <i data-key="1-4">@@+ ++ *@@</i> <i data-key="1-5">#@@@= @@@@</i> <i data-key="1-6">=@@* : %@@:</i><i data-key="1-7">:@@.:@- @@+</i> <i data-key="1-8">@@@@ -@@@%</i> <i data-key="1-9">@@: @@..@@</i> <i data-key="1-10">#@@ -# -@@</i> <i data-key="1-11">=@@@- @@@@:</i><i data-key="1-12">:@@@@ -@@@+</i> <i data-key="1-13">@@@@@@% @@@@@@@:</i>
+<i data-key="1-0">:@@@@*+:--:-@@@@</i> <i data-key="1-1">=@# *=- @@:</i><i data-key="1-2">:@+  %  =@+</i> <i data-key="1-3">@@+ ==*@@%</i> <i data-key="1-4">@@+ - :@@@</i> <i data-key="1-5">#@@@= @@@@</i> <i data-key="1-6">=@@@+ @@@@:</i><i data-key="1-7">:@@..@- @@+</i> <i data-key="1-8">@@@@ -@@@%</i> <i data-key="1-9">@@. @@..@@</i> <i data-key="1-10">#@@  :-@@@</i> <i data-key="1-11">=@@@- @@@@:</i><i data-key="1-12">:@@@@ -@@@+</i> <i data-key="1-13">@@@@@@@.*@@@@@@:</i>
+<i data-key="1-0">:@@@@@@@@@@@@@@@</i> <i data-key="1-1">=@@*... %@:</i><i data-key="1-2">:@@.:@- @@+</i> <i data-key="1-3">@@* ...@@%</i> <i data-key="1-4">@@* @% +@@</i> <i data-key="1-5">#@@@+.@@@@</i> <i data-key="1-6">=@@@# @@@@:</i><i data-key="1-7">:@@*...+@@+</i> <i data-key="1-8">@@@@.+@@@%</i> <i data-key="1-9">@@@....%@@</i> <i data-key="1-10">#@@.+@@@@@</i> <i data-key="1-11">=@@@- +@@@:</i><i data-key="1-12">:@@@+ -@@@+</i> <i data-key="1-13">@@@@@@@*-@@@@@@:</i>
+<i data-key="1-0">.@@@@@@@@@@@@@@@</i> <i data-key="1-1">-@@@@@@@@@:</i><i data-key="1-2">.@@@@@@@@@=</i> <i data-key="1-3">@@@@@@@@@#</i> <i data-key="1-4">@@@@@@@@@@</i> <i data-key="1-5">*@@@@@@@@@</i> <i data-key="1-6">-@@@@@@@@@:</i><i data-key="1-7">.@@@@@@@@@=</i> <i data-key="1-8">@@@@@@@@@#</i> <i data-key="1-9">@@@@@@@@@@</i> <i data-key="1-10">*@@@@@@@@@</i> <i data-key="1-11">-@@@%*%@@@:</i><i data-key="1-12">.@@@%*%@@@=</i> <i data-key="1-13">@@@@@@@@@@@@@@@:</i>
+ ...............     ......     ......     ......     ......      ......     ......     ......     ......     ......      ......     ......     ......  ............... 
+<i data-key="2-0">.@@@@@@@@@@@@@@@@@@</i> <i data-key="2-1">*@@@@@@@@@</i> <i data-key="2-2">=@@@@@@@@@:</i><i data-key="2-3">.@@@@@@@@@+</i> <i data-key="2-4">@@@@@@@@@#</i> <i data-key="2-5">@@@@@@@@@@</i> <i data-key="2-6">*@@@@@@@@@</i> <i data-key="2-7">=@@@@@@@@@:</i><i data-key="2-8">.@@@@@@@@@+</i> <i data-key="2-9">@@@@@@@@@#</i> <i data-key="2-10">@@@@@@@@@@</i> <i data-key="2-11">*@@@@@@@@@</i> <i data-key="enter">=@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@@@@@@@@@@@@@@@</i> <i data-key="2-1">#@@@. %@@@</i> <i data-key="2-2">=@@- . *@@:</i><i data-key="2-3">:@@. . =@@+</i> <i data-key="2-4">@@@ ..:@@%</i> <i data-key="2-5">@@%... #@@</i> <i data-key="2-6">#@@ #@.-@@</i> <i data-key="2-7">=@@@@* @@@:</i><i data-key="2-8">:@@::# :@@+</i> <i data-key="2-9">@@@ #@@@@%</i> <i data-key="2-10">@@@@-=@@@@</i> <i data-key="2-11">#@@@= @@@@</i> <i data-key="enter">=@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@-=#.=..-.%@@@@</i> <i data-key="2-1">#@@= : @@@</i> <i data-key="2-2">=@@- .:#@@:</i><i data-key="2-3">:@@.:@+ @@+</i> <i data-key="2-4">@@@ ..+@@%</i> <i data-key="2-5">@@:.@=:+@@</i> <i data-key="2-6">#@@ .. -@@</i> <i data-key="2-7">=@@@@* @@@:</i><i data-key="2-8">:@@.  :@@@+</i> <i data-key="2-9">@@@ #@@@@%</i> <i data-key="2-10">@@@@@@@@@@</i> <i data-key="2-11">#@@@%*@@@@</i> <i data-key="enter">=@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@*=++=+@+=%@@@@</i> <i data-key="2-1">#@% .. =@@</i> <i data-key="2-2">=@@:-# :@@:</i><i data-key="2-3">:@@..#: @@+</i> <i data-key="2-4">@@@ #@@@@%</i> <i data-key="2-5">@@= *= .@@</i> <i data-key="2-6">#@@ #@ -@@</i> <i data-key="2-7">=@@-:= @@@:</i><i data-key="2-8">:@@. # -@@+</i> <i data-key="2-9">@@@ +##@@%</i> <i data-key="2-10">@@@@-:@@@@</i> <i data-key="2-11">#@@@@@@@@@</i> <i data-key="enter">=@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="2-0">:@@@@@@@@@@@@@@@@@@</i> <i data-key="2-1">#@*=@@*-@@</i> <i data-key="2-2">=@@%::-@@@:</i><i data-key="2-3">:@@+::=@@@+</i> <i data-key="2-4">@@@:%@@@@%</i> <i data-key="2-5">@@@*::-%@@</i> <i data-key="2-6">#@@:%@=*@@</i> <i data-key="2-7">=@@%-:#@@@:</i><i data-key="2-8">:@@++@#:%@+</i> <i data-key="2-9">@@@-::-@@%</i> <i data-key="2-10">@@@@*@@@@@</i> <i data-key="2-11">#@@@@@@@@@</i> <i data-key="enter">=@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="2-0"> #################+</i> <i data-key="2-1">-########*</i> <i data-key="2-2">.######### </i><i data-key="2-3"> #########:</i> <i data-key="2-4">*########=</i> <i data-key="2-5">+########+</i> <i data-key="2-6">-########*</i> <i data-key="2-7">.######### </i><i data-key="2-8"> #########:</i> <i data-key="2-9">*########=</i> <i data-key="2-10">+########+</i> <i data-key="2-11">-########*</i> <i data-key="enter">.####################### </i>
+<i data-key="3-0"> ::::::::::::::::::::::: </i> <i data-key="3-1">.:::::::: </i> <i data-key="3-2">.::::::::.</i> <i data-key="3-3"> ::::::::.</i> <i data-key="3-4"> ::::::::: </i><i data-key="3-5"> ::::::::: </i> <i data-key="3-6">.:::::::: </i> <i data-key="3-7">.::::::::.</i> <i data-key="3-8"> ::::::::.</i> <i data-key="3-9"> ::::::::: </i><i data-key="3-10"> ::::::::: </i> <i data-key="3-11">.:::::::::::::::::::::::::::: </i>
+<i data-key="3-0">:@@@@@@@@@@@@@@@@@@@@@@@+</i> <i data-key="3-1">@@@####@@%</i> <i data-key="3-2">@@@#@@#@@@</i> <i data-key="3-3">#@@@%*@@@@</i> <i data-key="3-4">=@@#@@@#@@:</i><i data-key="3-5">:@@%##%@@@+</i> <i data-key="3-6">@@%%@@#@@%</i> <i data-key="3-7">@@%#@@#%@@</i> <i data-key="3-8">#@@@@@@@@@</i> <i data-key="3-9">=@@@@@@@@@:</i><i data-key="3-10">:@@@@@%@@@+</i> <i data-key="3-11">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="3-0">:@@@@@@@*##%##*#*%@@@@@@+</i> <i data-key="3-1">@@%:: .@@%</i> <i data-key="3-2">@@@ .. @@@</i> <i data-key="3-3">#@@ .: +@@</i> <i data-key="3-4">=@@ :@..@@:</i><i data-key="3-5">:@@. : .@@+</i> <i data-key="3-6">@@: =# @@%</i> <i data-key="3-7">@@. =+  @@</i> <i data-key="3-8">#@@@%#@@@@</i> <i data-key="3-9">=@@@@@@@@@:</i><i data-key="3-10">:@@@@-:@@@+</i> <i data-key="3-11">@@@@@@@@@@*##%##*#*%@@@@@@@@@:</i>
+<i data-key="3-0">:@@@@@@@::.:..=@:@@@@@@@+</i> <i data-key="3-1">@@@* -@@@%</i> <i data-key="3-2">@@@@  @@@@</i> <i data-key="3-3">#@* @@@@@@</i> <i data-key="3-4">=@@* * %@@:</i><i data-key="3-5">:@@. . :@@+</i> <i data-key="3-6">@@:  : @@%</i> <i data-key="3-7">@@..  . @@</i> <i data-key="3-8">#@@@*.@@@@</i> <i data-key="3-9">=@@@%.@@@@:</i><i data-key="3-10">:@@@@ %@@@+</i> <i data-key="3-11">@@@@@@@@@@::.:..=@:@@@@@@@@@@:</i>
+<i data-key="3-0">:@@@@@@@*##%##@@#@@@@@@@+</i> <i data-key="3-1">@@= .--@@%</i> <i data-key="3-2">@@% :: %@@</i> <i data-key="3-3">#@@ .- =@@</i> <i data-key="3-4">=@@@. :@@@:</i><i data-key="3-5">:@@. -. @@+</i> <i data-key="3-6">@@:.%  @@%</i> <i data-key="3-7">@@.-  - @@</i> <i data-key="3-8">#@@@%@@@@@</i> <i data-key="3-9">=@@@@@@@@@:</i><i data-key="3-10">:@@@*.@@@@+</i> <i data-key="3-11">@@@@@@@@@@*##%##@@#@@@@@@@@@@:</i>
+<i data-key="3-0">:@@@@@@@@@@@@@@@@@@@@@@@+</i> <i data-key="3-1">@@%****@@%</i> <i data-key="3-2">@@%#@@#%@@</i> <i data-key="3-3">#@@@#*%@@@</i> <i data-key="3-4">=@@@@*@@@@:</i><i data-key="3-5">:@@#**#@@@+</i> <i data-key="3-6">@@%#@@*@@%</i> <i data-key="3-7">@@#%%#%#@@</i> <i data-key="3-8">#@@@@@@@@@</i> <i data-key="3-9">=@@@@@@@@@:</i><i data-key="3-10">:@@@%%@@@@+</i> <i data-key="3-11">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i>
+<i data-key="3-0"> :---------------------- </i> <i data-key="3-1">:--------.</i> <i data-key="3-2">.--------:</i> <i data-key="3-3"> --------:</i> <i data-key="3-4"> --------: </i><i data-key="3-5"> :-------- </i> <i data-key="3-6">:--------.</i> <i data-key="3-7">.--------:</i> <i data-key="3-8"> --------:</i> <i data-key="3-9"> --------: </i><i data-key="3-10"> :-------- </i> <i data-key="3-11">:---------------------------: </i>
+<i data-key="4-0"> ************ </i><i data-key="4-1"> ************ </i><i data-key="4-2"> ************ </i><i data-key="4-3"> ******************************************************************** </i><i data-key="4-4"> ************ </i><i data-key="4-5"> ************ </i><i data-key="4-6"> ************ </i><i data-key="4-7"> ************ </i>
+<i data-key="4-0">:@@@@@@@@@@@@:</i><i data-key="4-1">:@@@@@@@@@@@@:</i><i data-key="4-2">:@@@@@@@@@@@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@@@@@@@@@@@:</i><i data-key="4-5">:@@@@@@@@@@@@:</i><i data-key="4-6">:@@@@@@@@@@@@:</i><i data-key="4-7">:@@@@@@@@@@@@:</i>
+<i data-key="4-0">:@@=+=+==+%@@:</i><i data-key="4-1">:@@@=++=*-%@@:</i><i data-key="4-2">:@@*+*==+=*@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@*+*==+=*@@:</i><i data-key="4-5">:@@@=++=*-%@@:</i><i data-key="4-6">:@@=+=+==+%@@:</i><i data-key="4-7">:@@@@=*=*@@@@:</i>
+<i data-key="4-0">:@*-++*..:=%@:</i><i data-key="4-1">:@@*-::=%:@@@:</i><i data-key="4-2">:@@-==..:=-@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@-==..:=-@@:</i><i data-key="4-5">:@@*-::=%:@@@:</i><i data-key="4-6">:@*-++*..:=%@:</i><i data-key="4-7">:@@@@.#. @@@@:</i>
+<i data-key="4-0">:@@@@@@@@@@@@:</i><i data-key="4-1">:@@@@@@@@@@@@:</i><i data-key="4-2">:@@@@@@@@@@@@:</i><i data-key="4-3">:@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">:@@@@@@@@@@@@:</i><i data-key="4-5">:@@@@@@@@@@@@:</i><i data-key="4-6">:@@@@@@@@@@@@:</i><i data-key="4-7">:@@@@@@@@@@@@:</i>
+<i data-key="4-0">.@@@@@@@@@@@@:</i><i data-key="4-1">.@@@@@@@@@@@@:</i><i data-key="4-2">.@@@@@@@@@@@@:</i><i data-key="4-3">.@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">.@@@@@@@@@@@@:</i><i data-key="4-5">.@@@@@@@@@@@@:</i><i data-key="4-6">.@@@@@@@@@@@@:</i><i data-key="4-7">.@@@@@@@@@@@@:</i>
+ ::::::::::::  ::::::::::::  ::::::::::::  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  ::::::::::::  ::::::::::::  ::::::::::::  :::::::::::: 
+</pre>
+</div>
+		</div>
+		<div class="legend-row">
+			<span><b>■</b> same keys, different board — watch Enter and left Shift change shape</span>
+			<span class="layout-state"><b id="lay-iso" class="on">iso</b> ⇄ <b id="lay-ansi">ansi</b></span>
+		</div>
+	</div>
+
+	<h1>The layout follows the keyboard.<span class="sub">Not the app. Not the window.</span></h1>
+	<p class="tagline">macOS switches input sources per app and per window — never per keyboard. InputPilot watches which keyboard produced the last key press and switches the input source to match. <strong>Map each keyboard once, then forget it exists.</strong></p>
+
+	<div class="cta">
+		<a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a>
+		<a class="btn alt" href="https://github.com/LucaGerlich/InputPilot#readme">Documentation</a>
+	</div>
+	<p class="ver">macOS 13+ · signed &amp; notarized · Apache-2.0 · <span id="ver">v1.0.1</span> · <code>brew install --cask lucagerlich/tap/inputpilot</code></p>
+</div>
+
+<div class="wrap">
+
+<section id="what">
+	<h2>What it looks like when it works</h2>
+	<p class="lede">Nothing. You type on the other keyboard and the language is already right. The debug log is the only place it shows its work — useful when reporting a bug, and safe to share.</p>
+
+	<div class="panel">
+		<div class="panel-head">
+			Debug log <span class="tag">EXAMPLE</span>
+			<span class="r">menu bar → Open Debug</span>
+		</div>
+		<div class="log">
+			<div><span class="t">[10:24:03.112]</span> <span class="i">INFO</span> <span class="c">permission</span>&nbsp;&nbsp;&nbsp;&nbsp;Input Monitoring granted.</div>
+			<div><span class="t">[10:24:03.118]</span> <span class="i">INFO</span> <span class="c">hid-monitor</span>&nbsp;&nbsp;&nbsp;HID monitor started.</div>
+			<div><span class="t">[10:24:07.402]</span> <span class="i">INFO</span> <span class="c">active-device</span>&nbsp;Active device changed to Magic Keyboard (VID 1452, PID 640).</div>
+			<div><span class="t">[10:24:07.806]</span> <span class="ok">SWITCH</span> <span class="c">auto</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Magic Keyboard → German</div>
+			<div><span class="t">[10:31:15.220]</span> <span class="i">INFO</span> <span class="c">active-device</span>&nbsp;Active device changed to Keychron K2 (VID 13364, PID 630).</div>
+			<div><span class="t">[10:31:15.624]</span> <span class="ok">SWITCH</span> <span class="c">auto</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Keychron K2 → U.S.</div>
+			<div><span class="t">[10:47:02.918]</span> <span class="w">WARN</span> <span class="c">conflict</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mapped source no longer enabled: com.apple.keylayout.French</div>
+			<div><span class="t">[10:47:02.918]</span> <span class="i">INFO</span> <span class="c">active-device</span>&nbsp;<span class="blink">▋</span></div>
+		</div>
+	</div>
+
+	<div class="cards">
+		<div class="card">
+			<div class="card-head">Magic Keyboard</div>
+			<div class="row"><span>Vendor ID</span><span>1452</span></div>
+			<div class="row"><span>Product ID</span><span>640</span></div>
+			<div class="row"><span>Transport</span><span>USB</span></div>
+			<div class="row"><span>Layout</span><span class="i">German</span></div>
+			<div class="row"><span>Status</span><span class="ok">■ active</span></div>
+		</div>
+		<div class="card">
+			<div class="card-head">Keychron K2</div>
+			<div class="row"><span>Vendor ID</span><span>13364</span></div>
+			<div class="row"><span>Product ID</span><span>630</span></div>
+			<div class="row"><span>Transport</span><span>Bluetooth</span></div>
+			<div class="row"><span>Layout</span><span class="i">U.S.</span></div>
+			<div class="row"><span>Status</span><span>■ mapped</span></div>
+		</div>
+		<div class="card muted">
+			<div class="card-head">Built-in Keyboard</div>
+			<div class="row"><span>Vendor ID</span><span>1452</span></div>
+			<div class="row"><span>Product ID</span><span>834</span></div>
+			<div class="row"><span>Transport</span><span>Internal</span></div>
+			<div class="row"><span>Layout</span><span>global fallback</span></div>
+			<div class="row"><span>Status</span><span>■ unmapped</span></div>
+		</div>
+	</div>
+</section>
+
+<section id="how">
+	<h2>How it works</h2>
+	<p class="lede">Three steps, once.</p>
+	<div class="steps">
+		<div class="step">
+			<div class="n">01</div>
+			<h3>Press a key</h3>
+			<p>Type on each keyboard so InputPilot learns it. Devices are recognised again after unplugging, reconnecting, or moving to another port.</p>
+		</div>
+		<div class="step">
+			<div class="n">02</div>
+			<h3>Pick a layout</h3>
+			<p>Assign an input source per keyboard in Settings. Add per-device or global fallbacks for anything unmapped.</p>
+		</div>
+		<div class="step">
+			<div class="n">03</div>
+			<h3>Forget about it</h3>
+			<p>A 400 ms debounce and a 1.5 s cooldown keep it from flapping. Modifier-only presses are ignored, so ⌘-Tab never changes your layout.</p>
+		</div>
+	</div>
+</section>
+
+<section id="privacy">
+	<h2>About that permission</h2>
+	<p class="lede">InputPilot asks for Input Monitoring — the permission that lets an app see keyboard events. That is a lot to ask for, so here is exactly what it does with it.</p>
+	<div class="panel" style="padding:1.4rem 1.5rem">
+		<p style="margin:0"><b>It reads which keyboard sent a key press. It does not read the key.</b></p>
+		<ul class="checks">
+			<li>The HID callback takes two things from each event: <b>the device that sent it</b>, and <b>whether the key was a modifier</b>. Nothing else.</li>
+			<li>No key code, no character, no typed text exists anywhere in the app — not in memory, not on disk, not in the debug log.</li>
+			<li>The only network traffic is the update check. <b>No telemetry, no analytics, no crash reporter.</b></li>
+			<li>The source is public and the app is about 4,000 lines. The keyboard handling reads in a few minutes.</li>
+		</ul>
+		<p style="margin:1.1rem 0 0"><a href="https://github.com/LucaGerlich/InputPilot/blob/main/SECURITY.md">Full privacy statement →</a></p>
+	</div>
+</section>
+
+<section id="faq">
+	<h2>Questions</h2>
+	<div class="narrow">
+	<details><summary>Why is it not on the App Store?</summary>
+		<p>Sandboxed apps cannot read HID devices directly, and that is the only way to tell keyboards apart. So InputPilot ships outside the App Store, signed with a Developer ID certificate and notarized by Apple — it opens without warnings.</p></details>
+	<details><summary>InputPilot does not appear under Input Monitoring.</summary>
+		<p>Some Macs do not populate that list automatically. Add it by hand: System Settings → Privacy &amp; Security → Input Monitoring → <b>+</b> → pick InputPilot in Applications, then switch it on.</p></details>
+	<details><summary>I granted permission but nothing happens.</summary>
+		<p>macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.</p></details>
+	<details><summary>Does it work with Bluetooth keyboards?</summary>
+		<p>Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting.</p></details>
+	<details><summary>What does it cost?</summary>
+		<p>Nothing. Free and open source under the Apache 2.0 licence.</p></details>
+	</div>
+</section>
+
+<section id="get" style="text-align:center">
+	<h2 style="display:inline-block">Stop fixing your layout by hand</h2>
+	<p class="lede" style="margin-inline:auto">macOS 13 or newer. About a minute to set up.</p>
+	<div class="cta"><a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a></div>
+</section>
+
+</div>
+
+<footer>
+	<div class="wrap">
+		<span>© 2026 Luca Gerlich</span>
+		<span>Apache-2.0</span>
+		<span class="r">
+			<a href="https://github.com/LucaGerlich/InputPilot">GitHub</a>
+			<a href="https://github.com/LucaGerlich/InputPilot/releases">Releases</a>
+			<a href="https://github.com/LucaGerlich/InputPilot/blob/main/CHANGELOG.md">Changelog</a>
+			<a href="https://github.com/LucaGerlich/InputPilot/issues">Issues</a>
+		</span>
+	</div>
+</footer>
+
+<script>
+	// keep the version label honest without a build step
+	fetch("https://api.github.com/repos/LucaGerlich/InputPilot/releases/latest")
+		.then(r => r.ok ? r.json() : null)
+		.then(d => { if (d && d.tag_name) document.getElementById("ver").textContent = d.tag_name; })
+		.catch(() => {});
+</script>
+
+<script>
+(() => {
+	const boards = { iso: document.getElementById("kbd-iso"), ansi: document.getElementById("kbd-ansi") };
+	if (!boards.iso || !boards.ansi) return;
+	const KEYS = {"ansi": {"`": "0-0", "1": "0-1", "2": "0-2", "3": "0-3", "4": "0-4", "5": "0-5", "6": "0-6", "7": "0-7", "8": "0-8", "9": "0-9", "0": "0-10", "-": "0-11", "=": "0-12", "Q": "1-1", "W": "1-2", "E": "1-3", "R": "1-4", "T": "1-5", "Y": "1-6", "U": "1-7", "I": "1-8", "O": "1-9", "P": "1-10", "[": "1-11", "]": "1-12", "\\": "1-13", "A": "2-1", "S": "2-2", "D": "2-3", "F": "2-4", "G": "2-5", "H": "2-6", "J": "2-7", "K": "2-8", "L": "2-9", ";": "2-10", "'": "2-11", "Z": "3-1", "X": "3-2", "C": "3-3", "V": "3-4", "B": "3-5", "N": "3-6", "M": "3-7", ",": "3-8", ".": "3-9", "/": "3-10"}, "iso": {"^": "0-0", "1": "0-1", "2": "0-2", "3": "0-3", "4": "0-4", "5": "0-5", "6": "0-6", "7": "0-7", "8": "0-8", "9": "0-9", "0": "0-10", "SS": "0-11", "\u00b4": "0-12", "Q": "1-1", "W": "1-2", "E": "1-3", "R": "1-4", "T": "1-5", "Z": "1-6", "U": "1-7", "I": "1-8", "O": "1-9", "P": "1-10", "\u00dc": "1-11", "+": "1-12", "A": "2-1", "S": "2-2", "D": "2-3", "F": "2-4", "G": "2-5", "H": "2-6", "J": "2-7", "K": "2-8", "L": "2-9", "\u00d6": "2-10", "\u00c4": "2-11", "#": "2-12", "<": "3-1", "Y": "3-2", "X": "3-3", "C": "3-4", "V": "3-5", "B": "3-6", "N": "3-7", "M": "3-8", ",": "3-9", ".": "3-10", "-": "3-11"}};
+	const segs = {};
+	for (const name of Object.keys(boards)) {
+		const m = new Map();
+		boards[name].querySelectorAll("i").forEach(i => {
+			const k = i.dataset.key;
+			if (!m.has(k)) m.set(k, []);
+			m.get(k).push(i);
+		});
+		segs[name] = m;
+	}
+
+	let layout = "iso";
+	const sleep = ms => new Promise(r => setTimeout(r, ms));
+	const idle = async () => { while (document.hidden) await sleep(400); };
+
+	async function press(ch) {
+		const id = KEYS[layout][ch.toUpperCase()];
+		const parts = id && segs[layout].get(id);
+		if (!parts) return;
+		parts.forEach(p => p.classList.add("lit"));
+		await sleep(140);
+		parts.forEach(p => p.classList.remove("lit"));
+	}
+
+	async function type(word, gap = 115) {
+		for (const ch of word) { await press(ch); await sleep(gap); }
+	}
+
+	async function swap() {
+		const next = layout === "iso" ? "ansi" : "iso";
+		// flash the keys whose shape differs, then cross-fade the boards
+		const changed = ["enter", "3-0", "3-1"];
+		changed.forEach(k => (segs[layout].get(k) || []).forEach(p => p.classList.add("flip")));
+		await sleep(280);
+		boards[layout].classList.remove("on");
+		boards[layout].setAttribute("aria-hidden", "true");
+		boards[next].classList.add("on");
+		boards[next].removeAttribute("aria-hidden");
+		changed.forEach(k => (segs[next].get(k) || []).forEach(p => p.classList.add("flip")));
+		document.getElementById("devname").textContent = next === "ansi" ? "Keychron K2 (ANSI)" : "Magic Keyboard (ISO)";
+		document.getElementById("lay-iso").classList.toggle("on", next === "iso");
+		document.getElementById("lay-ansi").classList.toggle("on", next === "ansi");
+		const prev = layout;
+		layout = next;
+		await sleep(520);
+		[prev, next].forEach(l => changed.forEach(k => (segs[l].get(k) || []).forEach(p => p.classList.remove("flip"))));
+	}
+
+	async function run() {
+		await sleep(800);
+		for (;;) {
+			await idle(); await type("GRÜSSE");
+			await sleep(850);
+			await idle(); await swap();
+			await sleep(400);
+			await idle(); await type("HELLO");
+			await sleep(850);
+			await idle(); await swap();
+			await sleep(400);
+		}
+	}
+
+	if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) run();
+	else boards.iso.classList.add("on");
+})();
+</script>
+</body>
+</html>
