@@ -61,12 +61,20 @@
 	.term-title { margin-left:auto; margin-right:auto; color:var(--dim); font-size:.8rem; padding-right:44px; }
 
 	.art-pad { padding:2.2rem .75rem 1.6rem; overflow-x:auto; }
+	@media (max-width:520px){ .art-pad { padding:1.4rem .3rem 1rem; } }
 	pre.art {
 		margin:0; display:inline-block; text-align:left; color:#6C7480;
-		/* 75 chars wide; ~0.6em per char, so this fills the terminal without overflowing */
-		font-size:clamp(5.5px, 1.72vw, 21px); line-height:1.15; letter-spacing:0;
+		/* 75 chars wide at ~0.6em each, so this fills the terminal without overflowing */
+		font-size:clamp(5.5px, 1.90vw, 25px); line-height:1.15; letter-spacing:0;
 	}
-	pre.art b.d { color:var(--orange); font-weight:400; }
+	/* every legend is addressable so keys can light up and swap on layout change */
+	pre.art i { font-style:normal; transition:color .1s ease, text-shadow .1s ease; }
+	pre.art i.d { color:var(--orange); }
+	pre.art i.lit { color:#FFF; text-shadow:0 0 .35em var(--blue), 0 0 .9em var(--blue); }
+	pre.art i.flip { color:#FFF; text-shadow:0 0 .4em var(--orange), 0 0 1em var(--orange); }
+	.layout-state { color:var(--faint); }
+	.layout-state b { font-weight:400; color:var(--faint); transition:color .25s ease; }
+	.layout-state b.on { color:var(--blue); }
 	.legend-row { display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap; color:var(--dim); font-size:.78rem; padding:0 1rem 1.4rem; }
 	.legend-row span b { color:var(--orange); font-weight:400; }
 
@@ -163,28 +171,28 @@
 	<div class="term">
 		<div class="term-bar">
 			<span class="dot"></span><span class="dot"></span><span class="dot"></span>
-			<span class="term-title">inputpilot — active keyboard</span>
+			<span class="term-title">inputpilot — <span id="devname">Magic Keyboard</span></span>
 		</div>
 		<div class="art-pad">
-<pre class="art">╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭────────╮
-│ ` ││ 1 ││ 2 ││ 3 ││ 4 ││ 5 ││ 6 ││ 7 ││ 8 ││ 9 ││ 0 ││ <b class="d">ß</b> ││ <b class="d">´</b> ││   ⌫    │
+<pre class="art" id="kbd" aria-label="An ASCII keyboard demonstrating layout switching">╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭────────╮
+│ <i id="k0-0">`</i> ││ <i id="k0-1">1</i> ││ <i id="k0-2">2</i> ││ <i id="k0-3">3</i> ││ <i id="k0-4">4</i> ││ <i id="k0-5">5</i> ││ <i id="k0-6">6</i> ││ <i id="k0-7">7</i> ││ <i id="k0-8">8</i> ││ <i id="k0-9">9</i> ││ <i id="k0-10">0</i> ││ <i id="k0-11" data-us="-" class="d">ß</i> ││ <i id="k0-12" data-us="=" class="d">´</i> ││   <i id="k0-13">⌫</i>    │
 ╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰────────╯
 ╭────────╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮
-│   ⇥    ││ Q ││ W ││ E ││ R ││ T ││ <b class="d">Z</b> ││ U ││ I ││ O ││ P ││ <b class="d">Ü</b> ││ <b class="d">+</b> ││ <b class="d">#</b> │
+│   <i id="k1-0">⇥</i>    ││ <i id="k1-1">Q</i> ││ <i id="k1-2">W</i> ││ <i id="k1-3">E</i> ││ <i id="k1-4">R</i> ││ <i id="k1-5">T</i> ││ <i id="k1-6" data-us="Y" class="d">Z</i> ││ <i id="k1-7">U</i> ││ <i id="k1-8">I</i> ││ <i id="k1-9">O</i> ││ <i id="k1-10">P</i> ││ <i id="k1-11" data-us="[" class="d">Ü</i> ││ <i id="k1-12" data-us="]" class="d">+</i> ││ <i id="k1-13" data-us="\" class="d">#</i> │
 ╰────────╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯
 ╭────────╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭────────╮
-│   ⇪    ││ A ││ S ││ D ││ F ││ G ││ H ││ J ││ K ││ L ││ <b class="d">Ö</b> ││ <b class="d">Ä</b> ││   ⏎    │
+│   <i id="k2-0">⇪</i>    ││ <i id="k2-1">A</i> ││ <i id="k2-2">S</i> ││ <i id="k2-3">D</i> ││ <i id="k2-4">F</i> ││ <i id="k2-5">G</i> ││ <i id="k2-6">H</i> ││ <i id="k2-7">J</i> ││ <i id="k2-8">K</i> ││ <i id="k2-9">L</i> ││ <i id="k2-10" data-us=";" class="d">Ö</i> ││ <i id="k2-11" data-us="'" class="d">Ä</i> ││   <i id="k2-12">⏎</i>    │
 ╰────────╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰────────╯
 ╭────────╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭─────────────╮
-│   ⇧    ││ <b class="d">Y</b> ││ X ││ C ││ V ││ B ││ N ││ M ││ , ││ . ││ <b class="d">-</b> ││      ⇧      │
+│   <i id="k3-0">⇧</i>    ││ <i id="k3-1" data-us="Z" class="d">Y</i> ││ <i id="k3-2">X</i> ││ <i id="k3-3">C</i> ││ <i id="k3-4">V</i> ││ <i id="k3-5">B</i> ││ <i id="k3-6">N</i> ││ <i id="k3-7">M</i> ││ <i id="k3-8">,</i> ││ <i id="k3-9">.</i> ││ <i id="k3-10" data-us="/" class="d">-</i> ││      <i id="k3-11">⇧</i>      │
 ╰────────╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰─────────────╯
 ╭────────╮╭────────╮╭────────╮╭───────────────────────╮╭────────╮╭───╮╭───╮
-│   ⌃    ││   ⌥    ││   ⌘    ││                       ││   ⌘    ││ ⌥ ││ ⌃ │
+│   <i id="k4-0">⌃</i>    ││   <i id="k4-1">⌥</i>    ││   <i id="k4-2">⌘</i>    ││                       ││   <i id="k4-4">⌘</i>    ││ <i id="k4-5">⌥</i> ││ <i id="k4-6">⌃</i> │
 ╰────────╯╰────────╯╰────────╯╰───────────────────────╯╰────────╯╰───╯╰───╯</pre>
 		</div>
 		<div class="legend-row">
 			<span><b>■</b> keys that move between German and U.S. layouts</span>
-			<span>de ⇄ us</span>
+			<span class="layout-state"><b id="lay-de" class="on">de</b> ⇄ <b id="lay-us">us</b></span>
 		</div>
 	</div>
 
@@ -329,6 +337,67 @@
 		.then(r => r.ok ? r.json() : null)
 		.then(d => { if (d && d.tag_name) document.getElementById("ver").textContent = d.tag_name; })
 		.catch(() => {});
+</script>
+
+<script>
+(() => {
+	const art = document.getElementById("kbd");
+	if (!art) return;
+	const keys = [...art.querySelectorAll("i")];
+	const variants = keys.filter(k => k.dataset.us);
+	variants.forEach(k => k.dataset.de = k.textContent);
+
+	let index = new Map();
+	const reindex = () => {
+		index = new Map();
+		keys.forEach(k => index.set(k.textContent.trim().toUpperCase(), k));
+	};
+	reindex();
+
+	const sleep = ms => new Promise(r => setTimeout(r, ms));
+	const idle = async () => { while (document.hidden) await sleep(400); };
+
+	async function press(ch) {
+		const el = index.get(ch.toUpperCase());
+		if (!el) return;
+		el.classList.add("lit");
+		await sleep(120);
+		el.classList.remove("lit");
+	}
+
+	async function type(word, gap = 130) {
+		for (const ch of word) { await press(ch); await sleep(gap); }
+	}
+
+	async function setLayout(next) {
+		variants.forEach(k => {
+			k.classList.add("flip");
+			k.textContent = next === "us" ? k.dataset.us : k.dataset.de;
+		});
+		reindex();
+		document.getElementById("devname").textContent = next === "us" ? "Keychron K2" : "Magic Keyboard";
+		document.getElementById("lay-de").classList.toggle("on", next === "de");
+		document.getElementById("lay-us").classList.toggle("on", next === "us");
+		await sleep(560);
+		variants.forEach(k => k.classList.remove("flip"));
+	}
+
+	async function run() {
+		await sleep(900);
+		for (;;) {
+			await idle(); await type("GRÜSSE");
+			await sleep(950);
+			await idle(); await setLayout("us");
+			await sleep(420);
+			await idle(); await type("HELLO");
+			await sleep(950);
+			await idle(); await setLayout("de");
+			await sleep(420);
+		}
+	}
+
+	if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) run();
+})();
 </script>
 </body>
 </html>
