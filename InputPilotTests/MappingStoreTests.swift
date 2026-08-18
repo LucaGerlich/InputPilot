@@ -185,6 +185,91 @@ struct MappingStoreTests {
         #expect(storedPayload.contains("\"inputSourceId\""))
         #expect(!storedPayload.contains("\"fingerprint\""))
     }
+
+    @Test
+    func corruptPayloadYieldsEmptyMappingsAndPreservesBackup() throws {
+        let suiteName = "MappingStoreTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw TestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let storageKey = "mappingStoreCorrupt"
+        let migrationKey = "mappingStoreCorruptFlag"
+        let corruptData = Data([0xFF, 0x00, 0x7B, 0x22])
+        defaults.set(true, forKey: migrationKey)
+        defaults.set(corruptData, forKey: storageKey)
+
+        let store = MappingStore(
+            defaults: defaults,
+            storageKey: storageKey,
+            migrationVersionKey: migrationKey
+        )
+
+        #expect(store.allMappings().isEmpty)
+        #expect(defaults.data(forKey: store.corruptedBackupKey) == corruptData)
+        #expect(defaults.data(forKey: storageKey) == corruptData)
+    }
+
+    @Test
+    func corruptPayloadBackupSurvivesSubsequentSetMapping() throws {
+        let suiteName = "MappingStoreTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw TestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let storageKey = "mappingStoreCorruptOverwrite"
+        let migrationKey = "mappingStoreCorruptOverwriteFlag"
+        let corruptData = Data([0xFF, 0x00, 0x7B, 0x22])
+        defaults.set(true, forKey: migrationKey)
+        defaults.set(corruptData, forKey: storageKey)
+
+        let store = MappingStore(
+            defaults: defaults,
+            storageKey: storageKey,
+            migrationVersionKey: migrationKey
+        )
+        let key = KeyboardDeviceKey(vendorId: 1452, productId: 832, transport: "USB", locationId: 123)
+        store.setMapping(deviceKey: key, inputSourceId: "com.apple.keylayout.US")
+
+        #expect(store.getMapping(for: key) == "com.apple.keylayout.US")
+        #expect(store.allMappings().count == 1)
+        #expect(defaults.data(forKey: store.corruptedBackupKey) == corruptData)
+    }
+
+    @Test
+    func corruptPayloadDuringMigrationPreservesBackup() throws {
+        let suiteName = "MappingStoreTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw TestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let storageKey = "mappingStoreCorruptMigration"
+        let migrationKey = "mappingStoreCorruptMigrationFlag"
+        let corruptData = Data([0xFF, 0x00, 0x7B, 0x22])
+        defaults.set(corruptData, forKey: storageKey)
+
+        let store = MappingStore(
+            defaults: defaults,
+            storageKey: storageKey,
+            migrationVersionKey: migrationKey
+        )
+
+        #expect(defaults.bool(forKey: migrationKey))
+        #expect(defaults.data(forKey: store.corruptedBackupKey) == corruptData)
+        #expect(store.allMappings().isEmpty)
+    }
 }
 
 private struct LegacyFlatStoredMapping: Codable {

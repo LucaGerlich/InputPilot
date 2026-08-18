@@ -85,6 +85,8 @@ final class InputSourceService: InputSourceServicing {
         }
 
         let list = unmanagedList.takeRetainedValue() as NSArray
+        // CF casts are unchecked at runtime (a conditional cast "always succeeds"),
+        // so `as!` is the idiomatic form here and cannot trap on element type.
         return list.map { $0 as! TISInputSource }
     }
 
@@ -93,7 +95,8 @@ final class InputSourceService: InputSourceServicing {
             return nil
         }
 
-        return unsafeBitCast(rawProperty, to: CFTypeRef.self)
+        // TISGetInputSourceProperty follows the CF "Get" rule (borrowed, +0).
+        return Unmanaged<CFTypeRef>.fromOpaque(rawProperty).takeUnretainedValue()
     }
 
     private func stringProperty(for source: TISInputSource, key: CFString) -> String? {

@@ -11,6 +11,7 @@ protocol HIDKeyboardMonitoring: AnyObject {
     @discardableResult
     func start(onEvent: @escaping (ActiveKeyboardDevice, KeyboardEventKind) -> Void) -> Bool
     func stop()
+    var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)? { get set }
     var isRunning: Bool { get }
     var lastStartErrorMessage: String? { get }
 }

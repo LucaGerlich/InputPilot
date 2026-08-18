@@ -9,6 +9,7 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
 
     private var manager: IOHIDManager?
     private var onEvent: EventCallback?
+    var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)?
 
     private(set) var isRunning = false
     private(set) var lastStartError: IOReturn?
@@ -36,6 +37,11 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         IOHIDManagerRegisterInputValueCallback(
             manager,
             Self.inputValueCallback,
+            Unmanaged.passUnretained(self).toOpaque()
+        )
+        IOHIDManagerRegisterDeviceRemovalCallback(
+            manager,
+            Self.deviceRemovalCallback,
             Unmanaged.passUnretained(self).toOpaque()
         )
         IOHIDManagerScheduleWithRunLoop(
@@ -70,6 +76,7 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         }
 
         IOHIDManagerRegisterInputValueCallback(manager, nil, nil)
+        IOHIDManagerRegisterDeviceRemovalCallback(manager, nil, nil)
         IOHIDManagerUnscheduleFromRunLoop(
             manager,
             CFRunLoopGetMain(),
@@ -80,6 +87,7 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         self.manager = nil
         self.isRunning = false
         self.onEvent = nil
+        self.onDeviceRemoved = nil
         debugLog("HID monitor stopped.")
     }
 
@@ -100,19 +108,25 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         let usage = IOHIDElementGetUsage(element)
 
         let device = IOHIDElementGetDevice(element)
+        onEvent?(makeActiveDevice(from: device), .keyDown(isModifier: isModifierUsage(usage)))
+    }
+
+    private func handleDeviceRemoval(_ device: IOHIDDevice) {
+        onDeviceRemoved?(makeActiveDevice(from: device))
+    }
+
+    private func makeActiveDevice(from device: IOHIDDevice) -> ActiveKeyboardDevice {
         let transport = stringProperty(for: device, key: kIOHIDTransportKey)
         let builtIn = boolProperty(for: device, key: kIOHIDBuiltInKey)
             || isLikelyBuiltIn(transport: transport)
-        let activeDevice = ActiveKeyboardDevice(
-            vendorId: intProperty(for: device, key: kIOHIDVendorIDKey) ?? 0,
-            productId: intProperty(for: device, key: kIOHIDProductIDKey) ?? 0,
+        return ActiveKeyboardDevice(
+            vendorId: intProperty(for: device, key: kIOHIDVendorIDKey),
+            productId: intProperty(for: device, key: kIOHIDProductIDKey),
             productName: stringProperty(for: device, key: kIOHIDProductKey),
             transport: transport,
             locationId: intProperty(for: device, key: kIOHIDLocationIDKey),
             isBuiltIn: builtIn
         )
-
-        onEvent?(activeDevice, .keyDown(isModifier: isModifierUsage(usage)))
     }
 
     private func intProperty(for device: IOHIDDevice, key: String) -> Int? {
@@ -164,6 +178,15 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
 
         let monitor = Unmanaged<HIDKeyboardMonitor>.fromOpaque(context).takeUnretainedValue()
         monitor.handleInputValue(value)
+    }
+
+    private static let deviceRemovalCallback: IOHIDDeviceCallback = { context, _, _, device in
+        guard let context else {
+            return
+        }
+
+        let monitor = Unmanaged<HIDKeyboardMonitor>.fromOpaque(context).takeUnretainedValue()
+        monitor.handleDeviceRemoval(device)
     }
 
     private func debugLog(_ message: String) {

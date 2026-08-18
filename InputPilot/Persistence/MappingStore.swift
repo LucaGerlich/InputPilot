@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 final class MappingStore: MappingStoring {
     private struct StoredMapping: Codable {
@@ -28,6 +29,11 @@ final class MappingStore: MappingStoring {
     private let migrationVersionKey: String
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let logger = Logger(subsystem: "com.lucagerlich.InputPilot", category: "MappingStore")
+
+    var corruptedBackupKey: String {
+        storageKey + ".corrupted"
+    }
 
     init(
         defaults: UserDefaults = .standard,
@@ -160,7 +166,19 @@ final class MappingStore: MappingStoring {
             }
         }
 
+        preserveCorruptedPayload(data)
         return nil
+    }
+
+    // Undecodable data must never be overwritten by the next save: preserve it once
+    // so a format regression cannot silently destroy every stored mapping.
+    private func preserveCorruptedPayload(_ data: Data) {
+        guard defaults.data(forKey: corruptedBackupKey) == nil else {
+            return
+        }
+
+        defaults.set(data, forKey: corruptedBackupKey)
+        logger.error("Could not decode stored keyboard mappings (\(data.count) bytes). Raw payload preserved under \(self.corruptedBackupKey, privacy: .public).")
     }
 
     private func saveConfigurations(_ configurations: [KeyboardDeviceKey: DeviceConfiguration]) {

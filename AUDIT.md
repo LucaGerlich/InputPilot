@@ -22,29 +22,29 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 
 ## High
 
-- [ ] **H1 · Stale `currentInputSourceId` breaks switch decisions and Undo** — `AppState.swift:14,528-533,675-695`. No `kTISNotifySelectedKeyboardInputSourceChanged` observer; cache refreshes at most every 6 s. Manual source change → next keypress compares against stale value → switch wrongly suppressed, and Undo can record the wrong "previous" source. Fix: force-read `currentInputSourceId()` before evaluating, or observe the TIS distributed notification. *Effort: medium*
-- [ ] **H2 · Silent decode failure wipes all mappings on next write** — `MappingStore.swift:119,141-164`. Undecodable stored data → `loadConfigurations()` returns `[:]` silently → next `setMapping` overwrites the blob, destroying every other device's config. Fix: log the failure, back up raw data to a `.corrupted` key, refuse blind overwrite. *Effort: small*
+- [x] **H1 · Stale `currentInputSourceId` breaks switch decisions and Undo** — `AppState.swift:14,528-533,675-695`. No `kTISNotifySelectedKeyboardInputSourceChanged` observer; cache refreshes at most every 6 s. Manual source change → next keypress compares against stale value → switch wrongly suppressed, and Undo can record the wrong "previous" source. Fix: force-read `currentInputSourceId()` before evaluating, or observe the TIS distributed notification. *Effort: medium*
+- [x] **H2 · Silent decode failure wipes all mappings on next write** — `MappingStore.swift:119,141-164`. Undecodable stored data → `loadConfigurations()` returns `[:]` silently → next `setMapping` overwrites the blob, destroying every other device's config. Fix: log the failure, back up raw data to a `.corrupted` key, refuse blind overwrite. *Effort: small*
 - [ ] **H3 · No update mechanism** — direct-download users are stranded on v1.0 forever. Integrate Sparkle 2 (or minimum: in-app "check latest release" link). *Effort: medium*
 - [ ] **H4 · Repo hygiene** — no `.gitignore`; `xcuserdata`/`UserInterfaceState.xcuserstate` tracked (leaks local usernames, perpetual dirty diffs); untracked `build/` + `.DS_Store`. Fix: add Swift/Xcode .gitignore, `git rm -r --cached` the user files. *Effort: small*
 - [ ] **H5 · No shared Xcode scheme** — schemes live only in per-user xcuserdata; CI and other machines cannot run the documented `xcodebuild -scheme InputPilot` commands. Mark scheme Shared and commit it. *Effort: small*
 
 ## Medium
 
-- [ ] **M1 · Modifier-only keypress triggers a real switch** — `SwitchController.swift:128-131`. `sawNonModifierKeyDown` is tracked but only selects a log label; it never gates the switch. Lone Shift/Cmd (e.g. during Cmd+Tab) fires a switch after the 400 ms debounce. Decide intended behavior and wire the flag into `flushPending`. *Effort: small*
-- [ ] **M2 · No HID device-removal callback** — `HIDKeyboardMonitor.swift`. Unplugged keyboard stays displayed as active until another key event arrives. Register removal callback or label the UI "last seen". *Effort: medium*
-- [ ] **M3 · Missing VID/PID defaults to 0** — `HIDKeyboardMonitor.swift:106-113`. Two metadata-less virtual/composite keyboards collide into one fingerprint and share a mapping. Treat missing IDs as unidentified (`Int?`), exclude from primary-match canonicalization. *Effort: medium*
+- [x] **M1 · Modifier-only keypress triggers a real switch** — `SwitchController.swift:128-131`. `sawNonModifierKeyDown` is tracked but only selects a log label; it never gates the switch. Lone Shift/Cmd (e.g. during Cmd+Tab) fires a switch after the 400 ms debounce. Decide intended behavior and wire the flag into `flushPending`. *Effort: small*
+- [x] **M2 · No HID device-removal callback** — `HIDKeyboardMonitor.swift`. Unplugged keyboard stays displayed as active until another key event arrives. Register removal callback or label the UI "last seen". *Effort: medium*
+- [x] **M3 · Missing VID/PID defaults to 0** — `HIDKeyboardMonitor.swift:106-113`. Two metadata-less virtual/composite keyboards collide into one fingerprint and share a mapping. Treat missing IDs as unidentified (`Int?`), exclude from primary-match canonicalization. *Effort: medium*
 - [x] **M4 · No `NSInputMonitoringUsageDescription`** — System Settings shows no justification for the scariest macOS permission. Add `INFOPLIST_KEY_NSInputMonitoringUsageDescription`. *Effort: small*
 - [ ] **M5 · App icon set 8/10 slots empty** — 16pt slot is a leftover `AppIcon-11 (verschoben).png`; dead unreferenced `AppIcon.dataset/AppIcon.icns`. Regenerate all sizes from the 1024px master; delete strays. *Effort: small*
 - [ ] **M6 · Uncommitted About/Settings work + release TODO** — `SettingsView.swift` modified, `AboutSection.swift` untracked, `AboutSection.swift:10` TODO: verify links; `supportEmail` is blank (no user contact channel). Finish, resolve TODO, commit on dev branch. *Effort: small*
 - [x] **M7 · Empty `NSHumanReadableCopyright`, no `LSApplicationCategoryType`** — Finder Get Info shows nothing. Set copyright + `public.app-category.utilities`. *Effort: small*
 - [ ] **M8 · README wrong/incomplete for end users** — says "Xcode 15+" but project format requires Xcode 26.x; no Install/Download section, no Gatekeeper note, no license section. *Effort: small*
-- [ ] **M9 · Zero failure-path test coverage** — permission denied/revoked transitions, HID start failure (`startResult=false` never exercised), `selectInputSource` failure, corrupt-UserDefaults recovery: all 0 %. Mocks exist for each — the hooks are unused. Also: `InputPilotTests.swift` is an empty template (delete), UI test target is stock boilerplate. *Effort: medium*
+- [x] **M9 · Zero failure-path test coverage** — permission denied/revoked transitions, HID start failure (`startResult=false` never exercised), `selectInputSource` failure, corrupt-UserDefaults recovery: all 0 %. Mocks exist for each — the hooks are unused. Also: `InputPilotTests.swift` is an empty template (delete), UI test target is stock boilerplate. *Effort: medium*
 
 ## Low
 
-- [ ] **L1 · `unsafeBitCast` on TIS properties** — `InputSourceService.swift:91-97`. Empirically verified safe (200k iterations, retain count stable 3→3, no crash) but relies on unspecified behavior; switch to `Unmanaged.fromOpaque(raw).takeUnretainedValue()` for the documented contract. *Effort: small*
-- [ ] **L2 · Force cast `$0 as! TISInputSource`** — `InputSourceService.swift:82-89`. Use `compactMap { $0 as? TISInputSource }`. *Effort: small*
-- [ ] **L3 · Test infra nits** — `MockMappingStore.validateMappings` doesn't replicate real sort order; `waitForSleepRegistration` uses a magic 20-yield heuristic instead of a condition-driven wait. *Effort: small*
+- [x] **L1 · `unsafeBitCast` on TIS properties** — `InputSourceService.swift:91-97`. Empirically verified safe (200k iterations, retain count stable 3→3, no crash) but relies on unspecified behavior; switch to `Unmanaged.fromOpaque(raw).takeUnretainedValue()` for the documented contract. *Effort: small*
+- [x] **L2 · Force cast `$0 as! TISInputSource`** — dismissed: CF casts are unchecked at runtime (compiler: conditional cast "always succeeds"), so `as?` adds a warning and no safety. Documented with a comment instead.
+- [x] **L3 · Test infra nits** — `MockMappingStore.validateMappings` doesn't replicate real sort order; `waitForSleepRegistration` uses a magic 20-yield heuristic instead of a condition-driven wait. *Effort: small*
 - [ ] **L4 · No crash reporting** — optional; the existing privacy-first log export + a GitHub issue template asking for it is a reasonable substitute. *Effort: medium*
 
 ## Verified good
@@ -56,5 +56,7 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 - README honest and accurate to the code; all UI strings English; version display reads from bundle so it always matches build settings
 
 ## False positives (investigated, dismissed)
+
+- L2: `as?` on CF types is not checkable at runtime; the force cast is the idiomatic, non-trapping form.
 
 - "CF over-release in `propertyValue(for:key:)` will crash the app" — disproven empirically; see L1.
