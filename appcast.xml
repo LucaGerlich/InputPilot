@@ -3,12 +3,12 @@
     <channel>
         <title>InputPilot</title>
         <item>
-            <title>1.0.0</title>
-            <pubDate>Tue, 18 Aug 2026 17:35:30 +0200</pubDate>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <title>1.0.1</title>
+            <pubDate>Tue, 18 Aug 2026 20:48:23 +0200</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LucaGerlich/InputPilot/releases/download/v1.0.0/InputPilot-1.0.0.dmg" length="1888977" type="application/octet-stream" sparkle:edSignature="CDxEXh1MTBfCcd9Yxal/lbdzO3CURMDk9CAI+J6++0VEepcuWYTpFuSH2h0SBrMOl0ICWiMPF85IA4cRsHewCw=="/>
+            <enclosure url="https://github.com/LucaGerlich/InputPilot/releases/download/v1.0.1/InputPilot-1.0.1.dmg" length="1917595" type="application/octet-stream" sparkle:edSignature="22K7ieergXqW2n1Gu0kEYeGKGQl3jM1OL1pgWhHULr+Ul9rD9fgxc2EKUIzOmE8e4wL7FCWBKZJcafptHB4QDA=="/>
         </item>
     </channel>
 </rss>
