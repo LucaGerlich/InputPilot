@@ -410,6 +410,84 @@ struct AppStateFailurePathTests {
         #expect(mappingStore.getMapping(for: deviceKey) == "com.apple.keylayout.US")
     }
 
+    @Test
+    func onboardingIsRequestedWhenPermissionIsMissing() throws {
+        let suiteName = "AppStateFailurePathTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw FailurePathTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let appState = AppState(
+            permissionService: MockPermissionService(accessType: kIOHIDAccessTypeDenied),
+            hidKeyboardMonitor: MockHIDKeyboardMonitor(),
+            inputSourceService: MockInputSourceService(),
+            mappingStore: MockMappingStore(),
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        #expect(appState.needsPermissionOnboarding)
+        #expect(!appState.needsRelaunchAfterGrant)
+    }
+
+    @Test
+    func onboardingIsNotRequestedOnceMonitoringRuns() throws {
+        let suiteName = "AppStateFailurePathTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw FailurePathTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let appState = AppState(
+            permissionService: MockPermissionService(accessType: kIOHIDAccessTypeGranted),
+            hidKeyboardMonitor: MockHIDKeyboardMonitor(),
+            inputSourceService: MockInputSourceService(),
+            mappingStore: MockMappingStore(),
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        #expect(!appState.needsPermissionOnboarding)
+        #expect(!appState.needsRelaunchAfterGrant)
+    }
+
+    @Test
+    func relaunchIsRequestedWhenGrantedButMonitorCannotStart() throws {
+        let suiteName = "AppStateFailurePathTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw FailurePathTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        // The state macOS leaves an app in right after the user grants access:
+        // permission reads as granted, but HID still refuses until relaunch.
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        keyboardMonitor.startResult = false
+        keyboardMonitor.lastStartErrorMessage = "HID monitor start blocked by macOS permissions/sandbox (kIOReturnNotPermitted)."
+
+        let appState = AppState(
+            permissionService: MockPermissionService(accessType: kIOHIDAccessTypeGranted),
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: MockInputSourceService(),
+            mappingStore: MockMappingStore(),
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock()
+        )
+
+        #expect(!appState.needsPermissionOnboarding)
+        #expect(appState.needsRelaunchAfterGrant)
+    }
+
     private func usbKeyboard() -> ActiveKeyboardDevice {
         ActiveKeyboardDevice(
             vendorId: 1452,
