@@ -9,7 +9,7 @@ enum AboutInfo {
 
     // Blank string = link hidden. Website stays hidden until the page exists.
     static let githubURL = "https://github.com/LucaGerlich/InputPilot"
-    static let websiteURL = ""
+    static let websiteURL = "https://inputpilot.lucagerlich.dev"
     static let supportEmail = ""
 
     /// Optional asset-catalog image name for the developer avatar.
