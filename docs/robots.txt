@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://inputpilot.lucagerlich.dev/sitemap.xml

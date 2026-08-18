@@ -1,0 +1,710 @@
+- generic [active] [ref=f15e1]:
+  - banner [ref=f15e3]:
+    - link "jump to content" [ref=f15e4] [cursor=pointer]:
+      - /url: "#content"
+    - generic [ref=f15e6]:
+      - generic [ref=f15e7]: my subreddits
+      - generic [ref=f15e9]:
+        - list [ref=f15e10]:
+          - listitem [ref=f15e11]:
+            - link "popular" [ref=f15e12] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/popular/
+          - listitem [ref=f15e13]:
+            - text: "-"
+            - link "all" [ref=f15e14] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/all/
+          - listitem [ref=f15e15]:
+            - text: "-"
+            - link "users" [ref=f15e16] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/users/
+        - text: "|"
+        - list [ref=f15e17]:
+          - listitem [ref=f15e18]:
+            - link "AskReddit" [ref=f15e19] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/AskReddit/
+          - listitem [ref=f15e20]:
+            - text: "-"
+            - link "pics" [ref=f15e21] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/pics/
+          - listitem [ref=f15e22]:
+            - text: "-"
+            - link "funny" [ref=f15e23] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/funny/
+          - listitem [ref=f15e24]:
+            - text: "-"
+            - link "movies" [ref=f15e25] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/movies/
+          - listitem [ref=f15e26]:
+            - text: "-"
+            - link "gaming" [ref=f15e27] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/gaming/
+          - listitem [ref=f15e28]:
+            - text: "-"
+            - link "worldnews" [ref=f15e29] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/worldnews/
+          - listitem [ref=f15e30]:
+            - text: "-"
+            - link "news" [ref=f15e31] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/news/
+          - listitem [ref=f15e32]:
+            - text: "-"
+            - link "todayilearned" [ref=f15e33] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/todayilearned/
+          - listitem [ref=f15e34]:
+            - text: "-"
+            - link "nottheonion" [ref=f15e35] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/nottheonion/
+          - listitem [ref=f15e36]:
+            - text: "-"
+            - link "explainlikeimfive" [ref=f15e37] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/explainlikeimfive/
+          - listitem [ref=f15e38]:
+            - text: "-"
+            - link "mildlyinteresting" [ref=f15e39] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/mildlyinteresting/
+          - listitem [ref=f15e40]:
+            - text: "-"
+            - link "DIY" [ref=f15e41] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/DIY/
+          - listitem [ref=f15e42]:
+            - text: "-"
+            - link "videos" [ref=f15e43] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/videos/
+          - listitem [ref=f15e44]:
+            - text: "-"
+            - link "OldSchoolCool" [ref=f15e45] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/OldSchoolCool/
+          - listitem [ref=f15e46]:
+            - text: "-"
+            - link "TwoXChromosomes" [ref=f15e47] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/TwoXChromosomes/
+          - listitem [ref=f15e48]:
+            - text: "-"
+            - link "tifu" [ref=f15e49] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/tifu/
+          - listitem [ref=f15e50]:
+            - text: "-"
+            - link "Music" [ref=f15e51] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/Music/
+          - listitem [ref=f15e52]:
+            - text: "-"
+            - link "books" [ref=f15e53] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/books/
+          - listitem [ref=f15e54]:
+            - text: "-"
+            - link "LifeProTips" [ref=f15e55] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/LifeProTips/
+          - listitem [ref=f15e56]:
+            - text: "-"
+            - link "dataisbeautiful" [ref=f15e57] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/dataisbeautiful/
+          - listitem [ref=f15e58]:
+            - text: "-"
+            - link "aww" [ref=f15e59] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/aww/
+          - listitem [ref=f15e60]:
+            - text: "-"
+            - link "science" [ref=f15e61] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/science/
+          - listitem [ref=f15e62]:
+            - text: "-"
+            - link "space" [ref=f15e63] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/space/
+          - listitem [ref=f15e64]:
+            - text: "-"
+            - link "Showerthoughts" [ref=f15e65] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/Showerthoughts/
+          - listitem [ref=f15e66]:
+            - text: "-"
+            - link "askscience" [ref=f15e67] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/askscience/
+          - listitem [ref=f15e68]:
+            - text: "-"
+            - link "Jokes" [ref=f15e69] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/Jokes/
+          - listitem [ref=f15e70]:
+            - text: "-"
+            - link "Art" [ref=f15e71] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/Art/
+          - listitem [ref=f15e72]:
+            - text: "-"
+            - link "IAmA" [ref=f15e73] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/IAmA/
+          - listitem [ref=f15e74]:
+            - text: "-"
+            - link "Futurology" [ref=f15e75] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/Futurology/
+          - listitem [ref=f15e76]:
+            - text: "-"
+            - link "sports" [ref=f15e77] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/sports/
+          - listitem [ref=f15e78]:
+            - text: "-"
+            - link "UpliftingNews" [ref=f15e79] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/UpliftingNews/
+          - listitem [ref=f15e80]:
+            - text: "-"
+            - link "food" [ref=f15e81] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/food/
+          - listitem [ref=f15e82]:
+            - text: "-"
+            - link "nosleep" [ref=f15e83] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/nosleep/
+          - listitem [ref=f15e84]:
+            - text: "-"
+            - link "creepy" [ref=f15e85] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/creepy/
+          - listitem [ref=f15e86]:
+            - text: "-"
+            - link "history" [ref=f15e87] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/history/
+          - listitem [ref=f15e88]:
+            - text: "-"
+            - link "gifs" [ref=f15e89] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/gifs/
+          - listitem [ref=f15e90]:
+            - text: "-"
+            - link "InternetIsBeautiful" [ref=f15e91] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/InternetIsBeautiful/
+          - listitem [ref=f15e92]:
+            - text: "-"
+            - link "GetMotivated" [ref=f15e93] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/GetMotivated/
+          - listitem [ref=f15e94]:
+            - text: "-"
+            - link "gadgets" [ref=f15e95] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/gadgets/
+          - listitem [ref=f15e96]:
+            - text: "-"
+            - link "announcements" [ref=f15e97] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/announcements/
+          - listitem [ref=f15e98]:
+            - text: "-"
+            - link "WritingPrompts" [ref=f15e99] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/WritingPrompts/
+          - listitem [ref=f15e100]:
+            - text: "-"
+            - link "philosophy" [ref=f15e101] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/philosophy/
+          - listitem [ref=f15e102]:
+            - text: "-"
+            - link "Documentaries" [ref=f15e103] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/Documentaries/
+          - listitem [ref=f15e104]:
+            - text: "-"
+            - link "EarthPorn" [ref=f15e105] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/EarthPorn/
+          - listitem [ref=f15e106]:
+            - text: "-"
+            - link "photoshopbattles" [ref=f15e107] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/photoshopbattles/
+          - listitem [ref=f15e108]:
+            - text: "-"
+            - link "listentothis" [ref=f15e109] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/listentothis/
+          - listitem [ref=f15e110]:
+            - text: "-"
+            - link "blog" [ref=f15e111] [cursor=pointer]:
+              - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/blog/
+      - link "more »" [ref=f15e112] [cursor=pointer]:
+        - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/subreddits/
+    - generic [ref=f15e113]:
+      - link [ref=f15e114] [cursor=pointer]:
+        - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/
+        - img "germany" [ref=f15e115]
+      - link "germany" [ref=f15e117] [cursor=pointer]:
+        - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/
+      - list [ref=f15e118]:
+        - listitem [ref=f15e119]:
+          - link "hot" [ref=f15e120] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/
+        - listitem [ref=f15e121]:
+          - link "new" [ref=f15e122] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/new/
+        - listitem [ref=f15e123]:
+          - link "rising" [ref=f15e124] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/rising/
+        - listitem [ref=f15e125]:
+          - link "controversial" [ref=f15e126] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/controversial/
+        - listitem [ref=f15e127]:
+          - link "top" [ref=f15e128] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/top/
+        - listitem [ref=f15e129]:
+          - link "wiki" [ref=f15e130] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/wiki/
+    - generic [ref=f15e131]:
+      - generic [ref=f15e132]:
+        - text: Want to join?
+        - link "Log in" [ref=f15e133] [cursor=pointer]:
+          - /url: https://web.archive.org/web/20260618201204/https://www.reddit.com/login
+        - text: or
+        - link "sign up" [ref=f15e134] [cursor=pointer]:
+          - /url: https://web.archive.org/web/20260618201204/https://www.reddit.com/login
+        - text: in seconds.
+      - list
+  - generic [ref=f15e135]:
+    - search [ref=f15e137]:
+      - textbox "search" [ref=f15e138]
+      - button "Submit" [ref=f15e139] [cursor=pointer]
+    - link "Submit a new link" [ref=f15e143] [cursor=pointer]:
+      - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/submit
+    - link "Submit a new text post" [ref=f15e147] [cursor=pointer]:
+      - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/submit?selftext=true
+    - generic [ref=f15e149]:
+      - heading [level=1] [ref=f15e150]:
+        - link "germany" [ref=f15e151] [cursor=pointer]:
+          - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/r/germany/
+      - link "join" [ref=f15e153] [cursor=pointer]:
+        - /url: "#"
+      - generic [ref=f15e156]:
+        - paragraph [ref=f15e157]:
+          - text: English language content relating to Germany.
+          - strong [ref=f15e158]: Posts and comments in German will be removed
+          - text: ", please post them to"
+          - link "/r/de" [ref=f15e159] [cursor=pointer]:
+            - /url: /web/20260618201204/https://old.reddit.com/r/de
+          - text: for example.
+        - paragraph [ref=f15e160]:
+          - text: Englischsprachige Inhalte mit Bezug zu Deutschland.
+          - strong [ref=f15e161]: Beiträge und Kommentare auf Deutsch werden entfernt
+          - text: ", bitte poste diese beispielsweise in"
+          - link "/r/de" [ref=f15e162] [cursor=pointer]:
+            - /url: /web/20260618201204/https://old.reddit.com/r/de
+          - text: .
+        - paragraph [ref=f15e163]:
+          - strong [ref=f15e164]: "Please check our rules before posting:"
+        - paragraph [ref=f15e165]:
+          - link "https://www.reddit.com/r/germany/about/rules/" [ref=f15e166] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://www.reddit.com/r/germany/about/rules/
+        - paragraph [ref=f15e167]
+        - paragraph [ref=f15e168]:
+          - strong [ref=f15e169]:
+            - link "/r/de" [ref=f15e170] [cursor=pointer]:
+              - /url: /web/20260618201204/https://old.reddit.com/r/de
+            - text: "cultural exchange schedule:"
+        - list [ref=f15e171]:
+          - listitem [ref=f15e172]: none
+        - paragraph [ref=f15e173]
+        - paragraph [ref=f15e174]:
+          - link "Studying in Germany? Read this NOW!" [ref=f15e175] [cursor=pointer]:
+            - /url: /web/20260618201204/https://old.reddit.com/r/germany/wiki/studying#green
+          - link "Got a question? Check the WIKI!" [ref=f15e176] [cursor=pointer]:
+            - /url: /web/20260618201204/https://old.reddit.com/r/germany/wiki/#green
+          - link "DACH Chat (German)" [ref=f15e177] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://webchat.snoonet.org/dach#lightgreen
+        - heading "+Other German-related subreddits" [level=3] [ref=f15e178]
+        - list:
+          - listitem [ref=f15e179]:
+            - paragraph [ref=f15e180]:
+              - link "DACH Portal" [ref=f15e181] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/dach/w/
+          - listitem [ref=f15e182]:
+            - paragraph [ref=f15e183]:
+              - link "/r/de" [ref=f15e184] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/de
+          - listitem [ref=f15e185]:
+            - paragraph [ref=f15e186]:
+              - link "/r/LegaladviceGerman" [ref=f15e187] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/LegaladviceGerman
+        - heading "+Learning German" [level=3] [ref=f15e188]
+        - list:
+          - listitem [ref=f15e189]:
+            - paragraph [ref=f15e190]:
+              - link "/r/German" [ref=f15e191] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/German
+          - listitem [ref=f15e192]:
+            - paragraph [ref=f15e193]:
+              - link "/r/GermanPractice" [ref=f15e194] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/GermanPractice
+          - listitem [ref=f15e195]:
+            - paragraph [ref=f15e196]:
+              - link "/r/GermanFacts" [ref=f15e197] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/GermanFacts
+          - listitem [ref=f15e198]:
+            - paragraph [ref=f15e199]:
+              - link "/r/GermanConversation" [ref=f15e200] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/GermanConversation
+        - heading "+Other English-language subreddits" [level=3] [ref=f15e201]
+        - list:
+          - listitem [ref=f15e202]:
+            - paragraph [ref=f15e203]:
+              - link "/r/SCHLAND" [ref=f15e204] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/SCHLAND
+          - listitem [ref=f15e205]:
+            - paragraph [ref=f15e206]:
+              - link "/r/germanyusa" [ref=f15e207] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/germanyusa
+          - listitem [ref=f15e208]:
+            - paragraph [ref=f15e209]:
+              - link "/r/DEjobs" [ref=f15e210] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/DEjobs
+          - listitem [ref=f15e211]:
+            - paragraph [ref=f15e212]:
+              - link "/r/bundesliga" [ref=f15e213] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/bundesliga
+          - listitem [ref=f15e214]:
+            - paragraph [ref=f15e215]:
+              - link "/r/GermanyPics" [ref=f15e216] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/GermanyPics
+          - listitem [ref=f15e217]:
+            - paragraph [ref=f15e218]:
+              - link "/r/germusic" [ref=f15e219] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/germusic
+          - listitem [ref=f15e220]:
+            - paragraph [ref=f15e221]:
+              - link "/r/de_punk" [ref=f15e222] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/de_punk
+          - listitem [ref=f15e223]:
+            - paragraph [ref=f15e224]:
+              - link "/r/germanrap" [ref=f15e225] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/germanrap
+          - listitem [ref=f15e226]:
+            - paragraph [ref=f15e227]:
+              - link "/r/NDH" [ref=f15e228] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/NDH
+        - heading "+Our neighbours" [level=3] [ref=f15e229]
+        - list:
+          - listitem [ref=f15e230]:
+            - paragraph [ref=f15e231]:
+              - link "/r/europe" [ref=f15e232] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/europe
+          - listitem [ref=f15e233]:
+            - paragraph [ref=f15e234]:
+              - link "/r/interrail" [ref=f15e235] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/interrail
+          - listitem [ref=f15e236]:
+            - paragraph [ref=f15e237]:
+              - link "/r/austria" [ref=f15e238] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/austria
+          - listitem [ref=f15e239]:
+            - paragraph [ref=f15e240]:
+              - link "/r/belgium" [ref=f15e241] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/belgium
+          - listitem [ref=f15e242]:
+            - paragraph [ref=f15e243]:
+              - link "/r/czech" [ref=f15e244] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/czech
+          - listitem [ref=f15e245]:
+            - paragraph [ref=f15e246]:
+              - link "/r/denmark" [ref=f15e247] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/denmark
+          - listitem [ref=f15e248]:
+            - paragraph [ref=f15e249]:
+              - link "/r/france" [ref=f15e250] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/france
+          - listitem [ref=f15e251]:
+            - paragraph [ref=f15e252]:
+              - link "/r/luxembourg" [ref=f15e253] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/luxembourg
+          - listitem [ref=f15e254]:
+            - paragraph [ref=f15e255]:
+              - link "/r/poland" [ref=f15e256] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/poland
+          - listitem [ref=f15e257]:
+            - paragraph [ref=f15e258]:
+              - link "/r/thenetherlands" [ref=f15e259] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/thenetherlands
+          - listitem [ref=f15e260]:
+            - paragraph [ref=f15e261]:
+              - link "/r/switzerland" [ref=f15e262] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/switzerland
+        - list [ref=f15e263]:
+          - listitem:
+            - paragraph:
+              - link "/r/aachen" [ref=f15e264] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/aachen
+          - listitem:
+            - paragraph:
+              - link "/r/augsburg" [ref=f15e265] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/augsburg
+          - listitem:
+            - paragraph:
+              - link "/r/berlin" [ref=f15e266] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/berlin
+          - listitem:
+            - paragraph:
+              - link "/r/bonn" [ref=f15e267] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/bonn
+          - listitem:
+            - paragraph:
+              - link "/r/braunschweig" [ref=f15e268] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/braunschweig
+          - listitem:
+            - paragraph:
+              - link "/r/bremen" [ref=f15e269] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/bremen
+          - listitem:
+            - paragraph:
+              - link "/r/cologne" [ref=f15e270] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/cologne
+          - listitem:
+            - paragraph:
+              - link "/r/chemnitz" [ref=f15e271] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/chemnitz
+          - listitem:
+            - paragraph:
+              - link "/r/darmstadt" [ref=f15e272] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/darmstadt
+          - listitem:
+            - paragraph:
+              - link "/r/dortmund" [ref=f15e273] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/dortmund
+          - listitem:
+            - paragraph:
+              - link "/r/dresden" [ref=f15e274] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/dresden
+          - listitem:
+            - paragraph:
+              - link "/r/duesseldorf" [ref=f15e275] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/duesseldorf
+          - listitem:
+            - paragraph:
+              - link "/r/erlangen" [ref=f15e276] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/erlangen
+          - listitem:
+            - paragraph:
+              - link "/r/frankfurt" [ref=f15e277] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/frankfurt
+          - listitem:
+            - paragraph:
+              - link "/r/freiburg" [ref=f15e278] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/freiburg
+          - listitem:
+            - paragraph:
+              - link "/r/hamburg" [ref=f15e279] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/hamburg
+          - listitem:
+            - paragraph:
+              - link "/r/hannover" [ref=f15e280] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/hannover
+          - listitem:
+            - paragraph:
+              - link "/r/heidelberg" [ref=f15e281] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/heidelberg
+          - listitem:
+            - paragraph:
+              - link "/r/karlsruhe" [ref=f15e282] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/karlsruhe
+          - listitem:
+            - paragraph:
+              - link "/r/kiel" [ref=f15e283] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/kiel
+          - listitem:
+            - paragraph:
+              - link "/r/leipzig" [ref=f15e284] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/leipzig
+          - listitem:
+            - paragraph:
+              - link "/r/magdeburg" [ref=f15e285] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/magdeburg
+          - listitem:
+            - paragraph:
+              - link "/r/mannheim" [ref=f15e286] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/mannheim
+          - listitem:
+            - paragraph:
+              - link "/r/muenster" [ref=f15e287] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/muenster
+          - listitem:
+            - paragraph:
+              - link "/r/munich" [ref=f15e288] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/munich
+          - listitem:
+            - paragraph:
+              - link "/r/nurnberg" [ref=f15e289] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/nurnberg
+          - listitem:
+            - paragraph:
+              - link "/r/regensburg" [ref=f15e290] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/regensburg
+          - listitem:
+            - paragraph:
+              - link "/r/stuttgart" [ref=f15e291] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/stuttgart
+          - listitem:
+            - paragraph:
+              - link "/r/trier" [ref=f15e292] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/trier
+          - listitem:
+            - paragraph:
+              - link "/r/tuebingen" [ref=f15e293] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/tuebingen
+          - listitem:
+            - paragraph:
+              - link "/r/wiesbaden" [ref=f15e294] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/wiesbaden
+          - listitem:
+            - paragraph:
+              - link "/r/wuerzburg" [ref=f15e295] [cursor=pointer]:
+                - /url: /web/20260618201204/https://old.reddit.com/r/wuerzburg
+      - generic [ref=f15e297]:
+        - text: a community for
+        - time [ref=f15e298]: 18 years
+    - generic [ref=f15e300]:
+      - heading "MODERATORS" [level=1] [ref=f15e302]
+      - list [ref=f15e303]:
+        - listitem [ref=f15e304]:
+          - link "message the mods" [ref=f15e305] [cursor=pointer]:
+            - /url: /web/20260618201204/https://old.reddit.com/message/compose/?to=/r/germany
+  - main [ref=f15e306]:
+    - generic [ref=f15e307]:
+      - generic:
+        - generic:
+          - heading "Rules for r/germany" [level=2]
+          - paragraph: Rules that visitors must follow to participate. May be used as reasons to report or ban.
+      - generic:
+        - generic:
+          - generic [ref=f15e308]:
+            - generic:
+              - generic:
+                - heading "1." [level=4] [ref=f15e310]
+                - generic [ref=f15e311]:
+                  - heading "Be a decent person" [level=4] [ref=f15e312]
+                  - generic [ref=f15e313]: Posts only
+                  - generic [ref=f15e314]: "Reported as: Inappropriate behaviour"
+                  - generic [ref=f15e315]:
+                    - paragraph [ref=f15e316]: Nobody should be ostracised or degraded based on their ethnicity, skin colour, sexual orientation, religion, culture or gender. Criticism is allowed if it is phrased adequately.
+                    - paragraph [ref=f15e317]: Don't forget the person behind the user name. Treat each other with respect, even if there are differences in opinion. Please report other users breaking these rules, instead of retaliating.
+          - generic [ref=f15e318]:
+            - generic:
+              - generic:
+                - heading "2." [level=4] [ref=f15e320]
+                - generic [ref=f15e321]:
+                  - heading "Inciting to or condoning violence" [level=4] [ref=f15e322]
+                  - generic [ref=f15e323]: Posts only
+                  - generic [ref=f15e324]: "Reported as: Inciting to or condoning violence"
+                  - paragraph [ref=f15e326]: Violence is not to be condoned, nor should one call for violence.
+          - generic [ref=f15e327]:
+            - generic:
+              - generic:
+                - heading "3." [level=4] [ref=f15e329]
+                - generic [ref=f15e330]:
+                  - heading "Don't ask for assistance in criminal activity, or tell people how to commit such activities." [level=4] [ref=f15e331]
+                  - generic [ref=f15e332]: Posts only
+                  - generic [ref=f15e333]: "Reported as: criminal activity"
+                  - paragraph [ref=f15e335]: This subreddit doesn't assist in committing criminal activity. It doesn't matter if you think that what you're trying to do (or telling someone to do) should be legal, or if it's legal in other countries than Germany. This includes asking how to buy drugs, or expecting help with tax evasion/illegal employment.
+          - generic [ref=f15e336]:
+            - generic:
+              - generic:
+                - heading "4." [level=4] [ref=f15e338]
+                - generic [ref=f15e339]:
+                  - heading "Content" [level=4] [ref=f15e340]
+                  - generic [ref=f15e341]: Posts only
+                  - generic [ref=f15e342]: "Reported as: Inappropriate Content"
+                  - paragraph [ref=f15e344]: We generally don’t allow self-promotion and surveys. If you want an exception, ask us in a modmail about this before posting / linking. This isn’t the place to post your classified ads either. People posting information that can be used to identify themselves or another person (names, addresses etc.) will get an immediate permanent ban. We also ask you to keep meta posts / comments about this subreddit, behaviour of other users and moderation of this subreddit to the modmails.
+          - generic [ref=f15e345]:
+            - generic:
+              - generic:
+                - heading "5." [level=4] [ref=f15e347]
+                - generic [ref=f15e348]:
+                  - heading "Misinformation" [level=4] [ref=f15e349]
+                  - generic [ref=f15e350]: Posts & Comments
+                  - generic [ref=f15e351]: "Reported as: Misinformation"
+                  - paragraph [ref=f15e353]: Do not share random conspiracy theories, don’t link to other social media platforms (twitter, telegram etc.) but post credible sources instead.
+          - generic [ref=f15e354]:
+            - generic:
+              - generic:
+                - heading "6." [level=4] [ref=f15e356]
+                - generic [ref=f15e357]:
+                  - heading "The sub language is English." [level=4] [ref=f15e358]
+                  - generic [ref=f15e359]: Posts & Comments
+                  - generic [ref=f15e360]: "Reported as: Non-English language content"
+                  - paragraph [ref=f15e362]: Posts and comments must be in English. You can quote German-language text to ask about it, but the main statement/question needs to be in English.
+          - generic [ref=f15e363]:
+            - generic:
+              - generic:
+                - heading "7." [level=4] [ref=f15e365]
+                - generic [ref=f15e366]:
+                  - heading "Low effort posts" [level=4] [ref=f15e367]
+                  - generic [ref=f15e368]: Posts only
+                  - generic [ref=f15e369]: "Reported as: Low effort posts"
+                  - paragraph [ref=f15e371]: Please check the wiki linked in the side bar before posting. Provide an appropriate amount of detail if you have a question (e.g. tell us about your country of origin/qualification if you ask for immigration advise) and give us some input if you want to have a discussion. Easy questions that only require a short answer should be posted in the megathread.
+          - generic [ref=f15e372]:
+            - generic:
+              - generic:
+                - heading "8." [level=4] [ref=f15e374]
+                - generic [ref=f15e375]:
+                  - heading "Inappropriate link title" [level=4] [ref=f15e376]
+                  - generic [ref=f15e377]: Posts & Comments
+                  - generic [ref=f15e378]: "Reported as: Inappropriate link title"
+                  - paragraph [ref=f15e380]: Link titles are to be kept free of opinion as far as possible and should convey the actual contents of the article. Posts linking to news paper articles should not change the title of the linked article.
+          - generic [ref=f15e381]:
+            - generic:
+              - generic:
+                - heading "9." [level=4] [ref=f15e383]
+                - generic [ref=f15e384]:
+                  - heading "AI Slop" [level=4] [ref=f15e385]
+                  - generic [ref=f15e386]: Posts & Comments
+                  - generic [ref=f15e387]: "Reported as: AI Slop"
+                  - paragraph [ref=f15e389]: Do not post content written by AI or other automated writing tools. This subreddit is a place for people to have discussions, not to have people copy-paste AI-generated content.
+          - generic [ref=f15e390]:
+            - generic:
+              - generic:
+                - heading "10." [level=4] [ref=f15e392]
+                - generic [ref=f15e393]:
+                  - heading "Only OC Photos and other images" [level=4] [ref=f15e394]
+                  - generic [ref=f15e395]: Posts only
+                  - generic [ref=f15e396]: "Reported as: Only OC Images"
+                  - generic [ref=f15e397]:
+                    - paragraph [ref=f15e398]: You may post pictures, if it is relevant to your post/question. We also allow OC pictures.
+                    - paragraph [ref=f15e399]: Only (very) repeatedly posted pictures like e.g. Neuschwanstein will be deleted.
+  - generic [ref=f15e400]:
+    - generic [ref=f15e401]:
+      - list [ref=f15e403]:
+        - listitem [ref=f15e404]: about
+        - listitem [ref=f15e405]:
+          - link "blog" [ref=f15e406] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://redditblog.com/
+        - listitem [ref=f15e407]:
+          - link "about" [ref=f15e408] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://www.redditinc.com/
+        - listitem [ref=f15e409]:
+          - link "advertising" [ref=f15e410] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://www.redditinc.com/advertising
+        - listitem [ref=f15e411]:
+          - link "careers" [ref=f15e412] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://www.redditinc.com/careers
+      - list [ref=f15e414]:
+        - listitem [ref=f15e415]: help
+        - listitem [ref=f15e416]:
+          - link "site rules" [ref=f15e417] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/rules/
+        - listitem [ref=f15e418]:
+          - link "Reddit help center" [ref=f15e419] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://www.reddithelp.com/
+        - listitem [ref=f15e420]:
+          - link "reddiquette" [ref=f15e421] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/wiki/reddiquette/
+        - listitem [ref=f15e422]:
+          - link "mod guidelines" [ref=f15e423] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/help/healthycommunities/
+        - listitem [ref=f15e424]:
+          - link "contact us" [ref=f15e425] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/contact/
+      - list [ref=f15e427]:
+        - listitem [ref=f15e428]: apps & tools
+        - listitem [ref=f15e429]:
+          - link "Reddit for iPhone" [ref=f15e430] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://itunes.apple.com/us/app/reddit-the-official-app/id1064216828?mt=8
+        - listitem [ref=f15e431]:
+          - link "Reddit for Android" [ref=f15e432] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://play.google.com/store/apps/details?id=com.reddit.frontpage
+        - listitem [ref=f15e433]:
+          - link "mobile website" [ref=f15e434] [cursor=pointer]:
+            - /url: "#"
+      - list [ref=f15e436]:
+        - listitem [ref=f15e437]: <3
+        - listitem [ref=f15e438]:
+          - link "reddit premium" [ref=f15e439] [cursor=pointer]:
+            - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/premium/
+    - paragraph [ref=f15e440]:
+      - text: Use of this site constitutes acceptance of our
+      - link "User Agreement" [ref=f15e441] [cursor=pointer]:
+        - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/help/useragreement
+      - text: and
+      - link "Privacy Policy" [ref=f15e442] [cursor=pointer]:
+        - /url: https://web.archive.org/web/20260618201204/https://old.reddit.com/help/privacypolicy
+      - text: . © 2026 reddit inc. All rights reserved.
+    - paragraph [ref=f15e443]: REDDIT and the ALIEN Logo are registered trademarks of reddit inc.
+  - paragraph [ref=f15e445]: π
