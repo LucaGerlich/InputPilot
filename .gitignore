@@ -18,3 +18,7 @@ xcuserdata/
 # Release artifacts
 dist/
 *.dmg
+
+# Test artifacts
+.playwright-mcp/
+landing-*.png
