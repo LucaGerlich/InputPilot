@@ -17,11 +17,11 @@ struct KeyboardDeviceKey: Hashable, Codable, Identifiable {
         case productName
     }
 
-    var vendorId: Int {
+    var vendorId: Int? {
         fingerprint.vendorId
     }
 
-    var productId: Int {
+    var productId: Int? {
         fingerprint.productId
     }
 
@@ -51,8 +51,8 @@ struct KeyboardDeviceKey: Hashable, Codable, Identifiable {
     }
 
     init(
-        vendorId: Int,
-        productId: Int,
+        vendorId: Int?,
+        productId: Int?,
         transport: String?,
         locationId: Int?,
         isBuiltIn: Bool = false,

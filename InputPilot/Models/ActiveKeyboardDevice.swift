@@ -1,16 +1,16 @@
 import Foundation
 
 struct ActiveKeyboardDevice: Equatable {
-    let vendorId: Int
-    let productId: Int
+    let vendorId: Int?
+    let productId: Int?
     let productName: String?
     let transport: String?
     let locationId: Int?
     let isBuiltIn: Bool
 
     init(
-        vendorId: Int,
-        productId: Int,
+        vendorId: Int?,
+        productId: Int?,
         productName: String?,
         transport: String?,
         locationId: Int?,
@@ -44,6 +44,10 @@ struct ActiveKeyboardDevice: Equatable {
             return "Built-in keyboard"
         }
 
-        return "VID \(vendorId), PID \(productId)"
+        guard vendorId != nil || productId != nil else {
+            return "Unknown keyboard"
+        }
+
+        return "VID \(KeyboardFingerprint.hardwareIdLabel(vendorId)), PID \(KeyboardFingerprint.hardwareIdLabel(productId))"
     }
 }

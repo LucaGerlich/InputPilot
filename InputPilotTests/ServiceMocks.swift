@@ -28,6 +28,7 @@ final class MockPermissionService: PermissionServicing {
 final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
     private var onEvent: ((ActiveKeyboardDevice, KeyboardEventKind) -> Void)?
 
+    var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)?
     var startResult = true
     var isRunning = false
     var lastStartErrorMessage: String?
@@ -50,6 +51,10 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
 
     func emit(_ device: ActiveKeyboardDevice, kind: KeyboardEventKind = .keyDown(isModifier: false)) {
         onEvent?(device, kind)
+    }
+
+    func emitRemoval(_ device: ActiveKeyboardDevice) {
+        onDeviceRemoved?(device)
     }
 }
 
@@ -131,7 +136,7 @@ final class MockMappingStore: MappingStoring {
     }
 
     func validateMappings(availableEnabledIds: Set<String>) -> [MappingConflict] {
-        mappings.compactMap { deviceKey, mappedId in
+        mappings.compactMap { deviceKey, mappedId -> MappingConflict? in
             guard !availableEnabledIds.contains(mappedId) else {
                 return nil
             }
@@ -141,6 +146,14 @@ final class MockMappingStore: MappingStoring {
                 mappedSourceId: mappedId,
                 reason: .missingOrDisabled
             )
+        }
+        // Match the real MappingStore's deterministic ordering.
+        .sorted { lhs, rhs in
+            if lhs.deviceKey.id == rhs.deviceKey.id {
+                return lhs.mappedSourceId < rhs.mappedSourceId
+            }
+
+            return lhs.deviceKey.id < rhs.deviceKey.id
         }
     }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MenuBarMenuView: View {
+    let updaterService: UpdaterService
+
     @EnvironmentObject private var appState: AppState
     @Environment(\.openWindow) private var openWindow
     private static let timeFormatter: DateFormatter = {
@@ -59,7 +61,9 @@ struct MenuBarMenuView: View {
                 )
                 .foregroundStyle(.orange)
 
-                SettingsLink {
+                Button {
+                    openWindow(id: "settings")
+                } label: {
                     Text("Fix in Settings...")
                 }
             }
@@ -114,8 +118,8 @@ struct MenuBarMenuView: View {
 
         Section("Active Keyboard Device") {
             if let keyboard = appState.activeKeyboardDevice {
-                Text("Vendor ID: \(keyboard.vendorId)")
-                Text("Product ID: \(keyboard.productId)")
+                Text("Vendor ID: \(KeyboardFingerprint.hardwareIdLabel(keyboard.vendorId))")
+                Text("Product ID: \(KeyboardFingerprint.hardwareIdLabel(keyboard.productId))")
                 Text("Product: \(keyboard.productName ?? "unknown")")
                 Text("Transport: \(keyboard.transport ?? "unknown")")
                 Text("Location ID: \(keyboard.locationId.map(String.init) ?? "unknown")")
@@ -169,5 +173,11 @@ struct MenuBarMenuView: View {
             Label("Settings…", systemImage: "gearshape")
         }
         .keyboardShortcut(",", modifiers: .command)
+
+        Button {
+            updaterService.checkForUpdates()
+        } label: {
+            Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+        }
     }
 }

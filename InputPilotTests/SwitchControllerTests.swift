@@ -45,7 +45,7 @@ struct SwitchControllerTests {
 
         #expect(decisions.isEmpty)
 
-        await waitForSleepRegistration()
+        await waitForSleepRegistration(on: clock)
         clock.advance(by: .milliseconds(400))
         await waitFor { decisions.count == 1 }
 
@@ -78,7 +78,7 @@ struct SwitchControllerTests {
             eventKind: .keyDown(isModifier: false),
             onSwitch: onSwitch
         )
-        await waitForSleepRegistration()
+        await waitForSleepRegistration(on: clock)
         clock.advance(by: .milliseconds(400))
         await waitFor { decisions.count == 1 }
 
@@ -90,7 +90,9 @@ struct SwitchControllerTests {
             eventKind: .keyDown(isModifier: false),
             onSwitch: onSwitch
         )
-        await waitForSleepRegistration()
+        // In cooldown the controller early-returns without scheduling a debounce
+        // sleeper, so there is nothing to wait for beyond a scheduler hop.
+        await Task.yield()
         clock.advance(by: .milliseconds(400))
         await Task.yield()
 
@@ -106,7 +108,7 @@ struct SwitchControllerTests {
             eventKind: .keyDown(isModifier: false),
             onSwitch: onSwitch
         )
-        await waitForSleepRegistration()
+        await waitForSleepRegistration(on: clock)
         clock.advance(by: .milliseconds(400))
         await waitFor { decisions.count == 2 }
 
@@ -130,9 +132,9 @@ struct SwitchControllerTests {
         }
     }
 
-    private func waitForSleepRegistration() async {
-        for _ in 0..<20 {
-            await Task.yield()
+    private func waitForSleepRegistration(on clock: ControlledClock, minimumSleepers: Int = 1) async {
+        await waitFor {
+            clock.pendingSleeperCount >= minimumSleepers
         }
     }
 }
@@ -141,6 +143,10 @@ struct SwitchControllerTests {
 private final class ControlledClock: ClockProviding {
     var now = Date(timeIntervalSince1970: 0)
     private var sleepers: [CheckedContinuation<Void, Error>] = []
+
+    var pendingSleeperCount: Int {
+        sleepers.count
+    }
 
     func sleep(for duration: Duration) async throws {
         _ = duration

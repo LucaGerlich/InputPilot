@@ -6,7 +6,6 @@ final class SwitchController {
 
     private struct PendingSwitch {
         let device: KeyboardDeviceKey
-        var currentSource: String?
         var mapping: String
         var sawNonModifierKeyDown: Bool
     }
@@ -57,7 +56,6 @@ final class SwitchController {
         }
 
         if var pendingSwitch, pendingSwitch.device == device {
-            pendingSwitch.currentSource = currentSource
             pendingSwitch.mapping = mapping
             pendingSwitch.sawNonModifierKeyDown = pendingSwitch.sawNonModifierKeyDown || eventKind.isNonModifierKeyDown
             self.pendingSwitch = pendingSwitch
@@ -66,7 +64,6 @@ final class SwitchController {
 
         pendingSwitch = PendingSwitch(
             device: device,
-            currentSource: currentSource,
             mapping: mapping,
             sawNonModifierKeyDown: eventKind.isNonModifierKeyDown
         )

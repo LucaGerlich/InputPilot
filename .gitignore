@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Xcode build artifacts
+build/
+DerivedData/
+
+# Per-user Xcode state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xctimeline
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Release artifacts
+dist/
+*.dmg

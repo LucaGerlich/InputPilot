@@ -1,0 +1,99 @@
+#!/bin/bash
+# InputPilot release pipeline:
+#   archive -> Developer ID export -> DMG -> notarize -> staple -> appcast
+#
+# Usage: Scripts/release.sh <version>   (e.g. Scripts/release.sh 1.0.0)
+#
+# One-time prerequisites (see AUDIT.md "Parked" section):
+#   1. "Developer ID Application" certificate in the login keychain.
+#   2. Notary credentials: xcrun notarytool store-credentials InputPilot \
+#        --apple-id <apple-id> --team-id Q62GHM26RA
+#   3. Sparkle EdDSA keys: run Sparkle's generate_keys once; put the public
+#      key into Config/AppInfo.plist (SUPublicEDKey).
+
+set -euo pipefail
+
+VERSION="${1:-}"
+if [[ -z "$VERSION" ]]; then
+	echo "Usage: Scripts/release.sh <version>  (e.g. 1.0.0)" >&2
+	exit 1
+fi
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DIST="$REPO_ROOT/dist"
+ARCHIVE="$DIST/InputPilot.xcarchive"
+EXPORT_DIR="$DIST/export"
+DMG="$DIST/InputPilot-$VERSION.dmg"
+NOTARY_PROFILE="InputPilot"
+
+cd "$REPO_ROOT"
+
+echo "==> Preflight"
+if [[ -n "$(git status --porcelain)" ]]; then
+	echo "ERROR: working tree is not clean. Release only from a clean, committed state." >&2
+	exit 1
+fi
+
+if ! security find-identity -v -p codesigning | grep -q "Developer ID Application"; then
+	echo "ERROR: no 'Developer ID Application' certificate in the keychain." >&2
+	echo "Create one in the Apple Developer portal (team Q62GHM26RA) and install it, then re-run." >&2
+	exit 1
+fi
+
+if ! grep -q "SUPublicEDKey" Config/AppInfo.plist || grep -A1 "SUPublicEDKey" Config/AppInfo.plist | grep -q "<string></string>"; then
+	echo "WARNING: SUPublicEDKey in Config/AppInfo.plist is empty." >&2
+	echo "Sparkle updates will not validate until you run generate_keys and fill it in." >&2
+fi
+
+rm -rf "$DIST"
+mkdir -p "$DIST"
+
+echo "==> Archiving Release build"
+xcodebuild -project InputPilot.xcodeproj \
+	-scheme InputPilot \
+	-configuration Release \
+	-destination 'generic/platform=macOS' \
+	-archivePath "$ARCHIVE" \
+	MARKETING_VERSION="$VERSION" \
+	archive
+
+echo "==> Exporting with Developer ID"
+xcodebuild -exportArchive \
+	-archivePath "$ARCHIVE" \
+	-exportOptionsPlist Scripts/ExportOptions.plist \
+	-exportPath "$EXPORT_DIR"
+
+APP="$EXPORT_DIR/InputPilot.app"
+
+echo "==> Verifying signature"
+codesign --verify --deep --strict --verbose=2 "$APP"
+
+echo "==> Packaging DMG"
+DMG_STAGING="$DIST/dmg"
+mkdir -p "$DMG_STAGING"
+cp -R "$APP" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
+hdiutil create -volname "InputPilot" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG"
+
+echo "==> Notarizing DMG (this can take a few minutes)"
+xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+
+echo "==> Stapling"
+xcrun stapler staple "$DMG"
+xcrun stapler validate "$DMG"
+
+echo "==> Generating Sparkle appcast"
+GENERATE_APPCAST="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*artifacts*Sparkle*/bin/generate_appcast" -print -quit 2>/dev/null || true)"
+if [[ -n "$GENERATE_APPCAST" ]]; then
+	"$GENERATE_APPCAST" "$DIST"
+	echo "Appcast written to $DIST/appcast.xml"
+else
+	echo "WARNING: generate_appcast not found in DerivedData; build once in Xcode or download Sparkle's tools, then run generate_appcast against $DIST." >&2
+fi
+
+echo ""
+echo "==> Done. Release checklist:"
+echo "  1. git tag v$VERSION && git push origin v$VERSION"
+echo "  2. Create a GitHub Release for v$VERSION and attach: $DMG"
+echo "  3. Commit the updated appcast.xml to main (the SUFeedURL points at it)."
+echo "  4. Verify Gatekeeper on another Mac: spctl --assess --type open --context context:primary-signature -v $DMG"
