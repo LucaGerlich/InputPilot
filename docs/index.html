@@ -256,7 +256,7 @@
      "name": "Why is it not on the App Store?",
      "acceptedAnswer": {
       "@type": "Answer",
-      "text": "Sandboxed apps cannot read HID devices directly, and that is the only way to tell keyboards apart. So InputPilot ships outside the App Store, signed with a Developer ID certificate and notarized by Apple — it opens without warnings."
+      "text": "InputPilot is not sandboxed — it talks to IOKit's HID layer directly, which is the most reliable way to tell one physical keyboard from another. App Store apps must be sandboxed, which constrains both HID access and input-source switching. That is not an absolute barrier — OctoKeys does per-keyboard switching on the App Store — but outside the store there is no review cycle, the app stays free, and you can read every line of the thing you are granting keyboard access to. It is signed with a Developer ID certificate and notarized by Apple, so it opens without warnings."
      }
     },
     {
@@ -293,10 +293,10 @@
     },
     {
      "@type": "Question",
-     "name": "How is this different from autokbisw or Input Source Pro?",
+     "name": "How is this different from autokbisw, OctoKeys or Input Source Pro?",
      "acceptedAnswer": {
       "@type": "Answer",
-      "text": "Input Source Pro and similar tools switch per app or per window. autokbisw switches per keyboard from the command line, with no interface. InputPilot switches per keyboard with a menu bar app you can configure — you pick the input source for each device instead of editing a config or trusting a guess about which language you are typing."
+      "text": "Input Source Pro and similar tools switch per app or per window. autokbisw switches per keyboard from the command line, with no interface. OctoKeys switches per keyboard on the App Store by remembering the last source you used with each one. InputPilot switches per keyboard too, but you assign the input source explicitly rather than relying on what was used last, it is open source so you can audit what it does with the permission, and it is free."
      }
     },
     {
@@ -518,7 +518,7 @@
 	<h2>Questions</h2>
 	<div class="narrow">
 	<details><summary>Why is it not on the App Store?</summary>
-		<p>Sandboxed apps cannot read HID devices directly, and that is the only way to tell keyboards apart. So InputPilot ships outside the App Store, signed with a Developer ID certificate and notarized by Apple — it opens without warnings.</p></details>
+		<p>InputPilot is not sandboxed — it talks to IOKit's HID layer directly, which is the most reliable way to tell one physical keyboard from another. App Store apps must be sandboxed, which constrains both HID access and input-source switching. That is not an absolute barrier — OctoKeys does per-keyboard switching on the App Store — but outside the store there is no review cycle, the app stays free, and you can read every line of the thing you are granting keyboard access to. It is signed with a Developer ID certificate and notarized by Apple, so it opens without warnings.</p></details>
 	<details><summary>InputPilot does not appear under Input Monitoring.</summary>
 		<p>Some Macs do not populate that list automatically. Add it by hand: System Settings → Privacy &amp; Security → Input Monitoring → <b>+</b> → pick InputPilot in Applications, then switch it on.</p></details>
 	<details><summary>I granted permission but nothing happens.</summary>
@@ -527,8 +527,8 @@
 		<p>Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting.</p></details>
 	<details><summary>I use a German external keyboard with a US MacBook. Does this fix it?</summary>
 		<p>That is the case it was written for. Map the external board to German and the built-in one to U.S. once. From then on the layout is right the moment you start typing on either — no shortcut, no menu, nothing to remember.</p></details>
-	<details><summary>How is this different from autokbisw or Input Source Pro?</summary>
-		<p>Input Source Pro and similar tools switch per app or per window. autokbisw switches per keyboard from the command line, with no interface. InputPilot switches per keyboard with a menu bar app you can configure — you pick the input source for each device instead of editing a config or trusting a guess about which language you are typing.</p></details>
+	<details><summary>How is this different from autokbisw, OctoKeys or Input Source Pro?</summary>
+		<p>Input Source Pro and similar tools switch per app or per window. autokbisw switches per keyboard from the command line, with no interface. OctoKeys switches per keyboard on the App Store by remembering the last source you used with each one. InputPilot switches per keyboard too, but you assign the input source explicitly rather than relying on what was used last, it is open source so you can audit what it does with the permission, and it is free.</p></details>
 	<details><summary>What does it cost?</summary>
 		<p>Nothing. Free and open source under the Apache 2.0 licence.</p></details>
 	</div>
