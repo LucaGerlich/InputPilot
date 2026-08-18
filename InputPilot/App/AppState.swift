@@ -187,6 +187,18 @@ final class AppState: ObservableObject {
         lastAction != nil && previousInputSourceIdBeforeLastSwitch != nil
     }
 
+    /// Without Input Monitoring the app can do nothing at all, and as a menu
+    /// bar app it has no window to say so - hence the first-run explainer.
+    var needsPermissionOnboarding: Bool {
+        !isInputMonitoringGranted
+    }
+
+    /// macOS usually only lets a process read HID events after a relaunch that
+    /// follows the grant, so a granted-but-stopped monitor means "restart me".
+    var needsRelaunchAfterGrant: Bool {
+        isInputMonitoringGranted && !hidKeyboardMonitor.isRunning
+    }
+
     var permissionWarningMessage: String {
         switch status.permissionStatus {
         case .denied:
