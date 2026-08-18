@@ -7,6 +7,8 @@ Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pa
 
 ## Summary
 
+**All 23 findings resolved.** Remaining release step is operational, not a finding: run `Scripts/release.sh 1.0.0`.
+
 | Severity | Count | Theme |
 |----------|-------|-------|
 | Critical | 5 | All distribution blockers — none are code bugs |
@@ -16,7 +18,7 @@ Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pa
 
 ## Critical — blocks any public release
 
-- [ ] **C1 · No Developer ID certificate / notarization** — only "Apple Development" certs exist on this machine; every downloaded copy will be blocked by Gatekeeper. Needs paid Developer Program cert "Developer ID Application", then `notarytool submit` + `stapler staple`. *Effort: medium*
+- [x] **C1 · No Developer ID certificate / notarization** — resolved 2026-08-18: "Developer ID Application: Luca Gerlich (T5M4XW2T24)" installed, notarytool keychain profile `InputPilot` stored and validated, Sparkle EdDSA key pair generated (public key in `Config/AppInfo.plist`, private key in the release machine's Keychain). Signing config moved from team Q62GHM26RA to T5M4XW2T24 to match the certificate. Remaining: run `Scripts/release.sh 1.0.0` to produce the first notarized build. *Effort: medium*
 - [x] **C2 · No release pipeline** — no CI, no ExportOptions.plist, no DMG/zip packaging, no git tags. Add: archive → Developer ID export → notarize → staple → DMG → tagged GitHub Release. *Effort: large*
 - [x] **C3 · No LICENSE file** — public distribution is legally "all rights reserved". Add MIT/Apache-2.0 or explicit EULA + README section. *Effort: small*
 - [x] **C4 · Bundle ID `lucagerlich.InputPilot` is not reverse-DNS** (`project.pbxproj`) — must become e.g. `com.lucagerlich.InputPilot` **before** the first public build; changing later resets users' Input Monitoring TCC grant and UserDefaults. *Effort: small*
