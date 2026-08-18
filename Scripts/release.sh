@@ -1,6 +1,6 @@
 #!/bin/bash
 # InputPilot release pipeline:
-#   archive -> Developer ID export -> notarize -> staple -> DMG -> appcast
+#   archive -> Developer ID export -> DMG -> notarize -> staple -> appcast
 #
 # Usage: Scripts/release.sh <version>   (e.g. Scripts/release.sh 1.0.0)
 #

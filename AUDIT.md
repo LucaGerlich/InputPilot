@@ -1,7 +1,9 @@
 # InputPilot Production-Readiness Audit
 
 Audited: 2026-08-18 · Scope: full repo · Method: 4 specialized reviews (correctness/concurrency, security/privacy, distribution, tests) + empirical verification
-Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party dependencies · security review clean (no keystroke logging, no network calls)**
+Verification baseline at audit time: **build ✓ · all 30 tests pass ✓ · no third-party dependencies · security review clean (no keystroke logging, no network calls)**
+
+Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pass; Sparkle 2.9.6 was added deliberately as the update mechanism (finding H3) — its user-initiated update checks are now the app's only network activity. Finding texts below are preserved as written at audit time; checkboxes track resolution.
 
 ## Summary
 
@@ -16,7 +18,7 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 
 - [ ] **C1 · No Developer ID certificate / notarization** — only "Apple Development" certs exist on this machine; every downloaded copy will be blocked by Gatekeeper. Needs paid Developer Program cert "Developer ID Application", then `notarytool submit` + `stapler staple`. *Effort: medium*
 - [x] **C2 · No release pipeline** — no CI, no ExportOptions.plist, no DMG/zip packaging, no git tags. Add: archive → Developer ID export → notarize → staple → DMG → tagged GitHub Release. *Effort: large*
-- [ ] **C3 · No LICENSE file** — public distribution is legally "all rights reserved". Add MIT/Apache-2.0 or explicit EULA + README section. *Effort: small*
+- [x] **C3 · No LICENSE file** — public distribution is legally "all rights reserved". Add MIT/Apache-2.0 or explicit EULA + README section. *Effort: small*
 - [x] **C4 · Bundle ID `lucagerlich.InputPilot` is not reverse-DNS** (`project.pbxproj`) — must become e.g. `com.lucagerlich.InputPilot` **before** the first public build; changing later resets users' Input Monitoring TCC grant and UserDefaults. *Effort: small*
 - [x] **C5 · `MACOSX_DEPLOYMENT_TARGET = 15.7`** — excludes macOS 13, 14, and 15.0–15.6 users. MenuBarExtra needs only 13.0; verify API floor and lower. *Effort: medium*
 
