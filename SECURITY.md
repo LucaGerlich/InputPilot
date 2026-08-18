@@ -9,7 +9,7 @@ To decide which input source to activate, InputPilot needs to know **which keybo
 - the device that sent it (vendor ID, product ID, transport, product name, location)
 - whether the key was a modifier
 
-Nothing else leaves that callback. No key code, no character, no typed text exists anywhere in the app — not in memory, not on disk, not in the debug log.
+Nothing else leaves that callback. The key's usage code is read inside it, solely to decide whether the key was a modifier, and is discarded when the callback returns — it is never assigned, stored, logged or transmitted, and no character or typed text is derived from it anywhere in the app.
 
 ## What InputPilot stores
 

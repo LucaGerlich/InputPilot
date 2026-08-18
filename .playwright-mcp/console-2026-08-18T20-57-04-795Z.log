@@ -1,3 +1,0 @@
-[     799ms] [LOG] {hash: 00d5819ed56ed8aad72e561ddbaaef584108877ec33b449bb539b82f33466988, nonce: 2151} @ https://safereddit.com/.within.website/x/cmd/anubis/static/js/main.mjs?cacheBuster=devel:30
-[    4830ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ https://safereddit.com/manifest.json:0
-[    5326ms] [ERROR] Manifest: Line: 1, column: 1, Syntax error. @ https://safereddit.com/manifest.json:0

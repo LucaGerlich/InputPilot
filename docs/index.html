@@ -503,12 +503,12 @@
 	<h2>About that permission</h2>
 	<p class="lede">InputPilot asks for Input Monitoring — the permission that lets an app see keyboard events. That is a lot to ask for, so here is exactly what it does with it.</p>
 	<div class="panel" style="padding:1.4rem 1.5rem">
-		<p style="margin:0"><b>It reads which keyboard sent a key press. It does not read the key.</b></p>
+		<p style="margin:0"><b>It reads which keyboard sent a key press, not what you typed.</b></p>
 		<ul class="checks">
 			<li>The HID callback takes two things from each event: <b>the device that sent it</b>, and <b>whether the key was a modifier</b>. Nothing else.</li>
-			<li>No key code, no character, no typed text exists anywhere in the app — not in memory, not on disk, not in the debug log.</li>
+			<li>The key's usage code is read only to decide whether it was a modifier, then discarded. It is never stored, logged or transmitted, and no character or text is ever derived from it.</li>
 			<li>The only network traffic is the update check. <b>No telemetry, no analytics, no crash reporter.</b></li>
-			<li>The source is public and the app is about 4,000 lines. The keyboard handling reads in a few minutes.</li>
+			<li>The source is public and the app is about 3,200 lines of Swift. The keyboard handling is 15 lines and reads in a minute.</li>
 		</ul>
 		<p style="margin:1.1rem 0 0"><a href="https://github.com/LucaGerlich/InputPilot/blob/main/SECURITY.md">Full privacy statement →</a></p>
 	</div>
