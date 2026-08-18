@@ -146,9 +146,17 @@ else
 	echo "  generate_appcast --download-url-prefix $DOWNLOAD_PREFIX $DIST" >&2
 fi
 
+DMG_SHA="$(shasum -a 256 "$DMG" | cut -d' ' -f1)"
+
+echo ""
+echo "==> Homebrew cask update (LucaGerlich/homebrew-tap, Casks/inputpilot.rb):"
+echo "  version \"$VERSION\""
+echo "  sha256 \"$DMG_SHA\""
+
 echo ""
 echo "==> Done. Release checklist:"
 echo "  1. git tag v$VERSION && git push origin v$VERSION"
 echo "  2. Create a GitHub Release for v$VERSION and attach: $DMG"
 echo "  3. Commit the updated appcast.xml to main (the SUFeedURL points at it)."
-echo "  4. Verify Gatekeeper on another Mac: spctl --assess --type open --context context:primary-signature -v $DMG"
+echo "  4. Update the Homebrew cask with the version and sha256 printed above."
+echo "  5. Verify Gatekeeper on another Mac: spctl --assess --type open --context context:primary-signature -v $DMG"
