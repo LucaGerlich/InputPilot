@@ -51,6 +51,8 @@
 	.term {
 		border:1px solid var(--line); border-radius:10px; background:var(--panel);
 		overflow:hidden; box-shadow:0 24px 60px -30px #000;
+		/* the headline sat flush against the board; let the hero breathe */
+		margin-bottom:clamp(2.75rem, 5.5vw, 4.75rem);
 	}
 	.term-bar {
 		display:flex; align-items:center; gap:.5rem; padding:.6rem .85rem;
@@ -81,7 +83,7 @@
 	.legend-row { display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap; color:var(--dim); font-size:.78rem; padding:0 1rem 1.4rem; }
 	.legend-row span b { color:var(--orange); font-weight:400; }
 
-	.tagline { color:var(--dim); margin:2.2rem auto 1.6rem; max-width:62ch; font-size:.98rem; }
+	.tagline { color:var(--dim); margin:1.5rem auto 1.9rem; max-width:62ch; font-size:.98rem; }
 	.tagline strong { color:var(--fg); font-weight:600; }
 	h1 { font-size:clamp(1.5rem,3.6vw,2.15rem); letter-spacing:-0.02em; margin:0 0 .6rem; text-wrap:balance; }
 	h1 .sub { display:block; color:var(--blue); }
