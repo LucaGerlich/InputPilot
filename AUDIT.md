@@ -7,7 +7,7 @@ Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pa
 
 ## Summary
 
-**All 23 findings resolved.** Remaining release step is operational, not a finding: run `Scripts/release.sh 1.0.0`.
+**All 23 findings resolved. v1.0.0 shipped 2026-08-18** — signed, notarized, stapled, published at https://github.com/LucaGerlich/InputPilot/releases/tag/v1.0.0 and verified end-to-end (quarantined download accepted by Gatekeeper).
 
 | Severity | Count | Theme |
 |----------|-------|-------|
