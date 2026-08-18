@@ -7,7 +7,7 @@
 # One-time prerequisites (see AUDIT.md "Parked" section):
 #   1. "Developer ID Application" certificate in the login keychain.
 #   2. Notary credentials: xcrun notarytool store-credentials InputPilot \
-#        --apple-id <apple-id> --team-id Q62GHM26RA
+#        --apple-id <apple-id> --team-id T5M4XW2T24
 #   3. Sparkle EdDSA keys: run Sparkle's generate_keys once; put the public
 #      key into Config/AppInfo.plist (SUPublicEDKey).
 
@@ -36,7 +36,7 @@ fi
 
 if ! security find-identity -v -p codesigning | grep -q "Developer ID Application"; then
 	echo "ERROR: no 'Developer ID Application' certificate in the keychain." >&2
-	echo "Create one in the Apple Developer portal (team Q62GHM26RA) and install it, then re-run." >&2
+	echo "Create one in the Apple Developer portal (team T5M4XW2T24) and install it, then re-run." >&2
 	exit 1
 fi
 
