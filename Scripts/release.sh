@@ -1,6 +1,10 @@
 #!/bin/bash
 # InputPilot release pipeline:
-#   archive -> Developer ID export -> DMG -> notarize -> staple -> appcast
+#   archive -> Developer ID export -> notarize+staple app -> DMG -> sign DMG
+#   -> notarize+staple DMG -> Gatekeeper check -> appcast
+#
+# Both the app and the DMG are notarized and stapled: the app so it launches
+# offline without contacting Apple, the DMG so Gatekeeper accepts the download.
 #
 # Usage: Scripts/release.sh <version>   (e.g. Scripts/release.sh 1.0.0)
 #
@@ -68,6 +72,19 @@ APP="$EXPORT_DIR/InputPilot.app"
 echo "==> Verifying signature"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
+# The app is notarized and stapled BEFORE it goes into the DMG. Stapling only
+# the DMG leaves the copied-out app without a ticket, so its first launch needs
+# a network round-trip to Apple and fails when the user is offline.
+echo "==> Notarizing app (this can take a few minutes)"
+APP_ZIP="$DIST/InputPilot-app.zip"
+ditto -c -k --keepParent "$APP" "$APP_ZIP"
+xcrun notarytool submit "$APP_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+rm -f "$APP_ZIP"
+
+echo "==> Stapling app"
+xcrun stapler staple "$APP"
+xcrun stapler validate "$APP"
+
 echo "==> Packaging DMG"
 DMG_STAGING="$DIST/dmg"
 mkdir -p "$DMG_STAGING"
@@ -75,20 +92,33 @@ cp -R "$APP" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
 hdiutil create -volname "InputPilot" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG"
 
+# An unsigned DMG is rejected by Gatekeeper on its own terms, so sign the
+# container too, then notarize and staple it.
+echo "==> Signing DMG"
+codesign --force --sign "Developer ID Application" --timestamp "$DMG"
+codesign --verify --strict --verbose=2 "$DMG"
+
 echo "==> Notarizing DMG (this can take a few minutes)"
 xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
 
-echo "==> Stapling"
+echo "==> Stapling DMG"
 xcrun stapler staple "$DMG"
 xcrun stapler validate "$DMG"
 
+echo "==> Verifying Gatekeeper acceptance"
+spctl --assess --type open --context context:primary-signature -v "$DMG"
+
 echo "==> Generating Sparkle appcast"
+# Sparkle downloads the DMG from the GitHub release asset URL, not from the
+# repo tree, so the enclosure URLs must carry that prefix.
+DOWNLOAD_PREFIX="https://github.com/LucaGerlich/InputPilot/releases/download/v$VERSION/"
 GENERATE_APPCAST="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*artifacts*Sparkle*/bin/generate_appcast" -print -quit 2>/dev/null || true)"
 if [[ -n "$GENERATE_APPCAST" ]]; then
-	"$GENERATE_APPCAST" "$DIST"
+	"$GENERATE_APPCAST" --download-url-prefix "$DOWNLOAD_PREFIX" "$DIST"
 	echo "Appcast written to $DIST/appcast.xml"
 else
-	echo "WARNING: generate_appcast not found in DerivedData; build once in Xcode or download Sparkle's tools, then run generate_appcast against $DIST." >&2
+	echo "WARNING: generate_appcast not found in DerivedData; build once in Xcode or download Sparkle's tools, then run:" >&2
+	echo "  generate_appcast --download-url-prefix $DOWNLOAD_PREFIX $DIST" >&2
 fi
 
 echo ""
