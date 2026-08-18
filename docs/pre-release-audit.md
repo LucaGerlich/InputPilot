@@ -1,5 +1,7 @@
 # InputPilot Production-Readiness Audit
 
+> **Historical record.** This is the pre-release audit carried out on 2026-08-18, before InputPilot 1.0.0 shipped. Every finding below is resolved; it is kept for transparency about what was checked and what was found. Current issues live in the [issue tracker](https://github.com/LucaGerlich/InputPilot/issues), and released changes in [CHANGELOG.md](../CHANGELOG.md).
+
 Audited: 2026-08-18 · Scope: full repo · Method: 4 specialized reviews (correctness/concurrency, security/privacy, distribution, tests) + empirical verification
 Verification baseline at audit time: **build ✓ · all 30 tests pass ✓ · no third-party dependencies · security review clean (no keystroke logging, no network calls)**
 

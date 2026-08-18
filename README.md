@@ -1,298 +1,133 @@
 # InputPilot
 
-InputPilot is a macOS menu bar app built with Swift/SwiftUI that detects the active keyboard and automatically switches to the matching input source (keyboard layout).
+[![Latest release](https://img.shields.io/github/v/release/LucaGerlich/InputPilot?label=download)](https://github.com/LucaGerlich/InputPilot/releases/latest)
+[![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)](https://github.com/LucaGerlich/InputPilot/releases/latest)
+[![CI](https://github.com/LucaGerlich/InputPilot/actions/workflows/ci.yml/badge.svg)](https://github.com/LucaGerlich/InputPilot/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-This README reflects the current state of the `main` branch.
+**Type on the right keyboard, get the right language.** InputPilot is a small macOS menu bar app that notices which keyboard you are typing on and switches the input source to match.
 
-## Table of Contents
+If you keep a German external keyboard next to a US MacBook keyboard, you already know the problem: every switch between them means fixing the layout by hand. Map each keyboard once and InputPilot does it for you.
 
-- [What InputPilot Does](#what-inputpilot-does)
-- [Core Features](#core-features)
-- [Privacy and Security](#privacy-and-security)
-- [Installation](#installation)
-- [Requirements](#requirements)
-- [Build and Run](#build-and-run)
-- [How to Use](#how-to-use)
-- [Auto-Switch Logic (Important)](#auto-switch-logic-important)
-- [Persisted Data](#persisted-data)
-- [Debugging](#debugging)
-- [Tests](#tests)
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Troubleshooting](#troubleshooting)
-- [Known Limitations](#known-limitations)
-- [Releasing](#releasing)
-- [License](#license)
+## Install
 
-## What InputPilot Does
+1. Download **`InputPilot-x.y.z.dmg`** from the [latest release](https://github.com/LucaGerlich/InputPilot/releases/latest).
+2. Open the DMG and drag InputPilot into Applications.
+3. Launch it. A keyboard icon appears in the menu bar — there is no Dock icon and no main window.
+4. A welcome window asks for **Input Monitoring**. Grant it, then quit and reopen InputPilot if macOS asks.
+5. Press a key on each keyboard you want to configure, then open **Settings** from the menu bar icon and pick an input source per keyboard.
 
-Typical use case: you use multiple keyboards (for example an internal MacBook keyboard and an external keyboard), and you want the input source to follow the keyboard you are actively using.
+The app is signed with a Developer ID certificate and notarized by Apple, so it opens without Gatekeeper warnings. It updates itself through [Sparkle](https://sparkle-project.org); you can also check manually from the menu bar.
 
-InputPilot does this by:
+> **If InputPilot does not appear under Input Monitoring** after you allow the prompt, add it by hand: System Settings → Privacy & Security → Input Monitoring → **+** → pick InputPilot in Applications, then switch it on. Some Macs do not populate that list on their own.
 
-1. Detecting the keyboard that produced the latest key event via HID.
-2. Looking up the configured input source for that device.
-3. Switching input source using Carbon/TIS.
+## Why it needs Input Monitoring
 
-## Core Features
+To tell your keyboards apart, InputPilot has to see that *a* key was pressed and on *which* device. macOS puts that behind the Input Monitoring permission.
 
-- MenuBarExtra UI with live status.
-- Input Monitoring permission flow:
-  - check status
-  - request permission
-  - open System Settings directly
-- HID keyboard monitoring:
-  - start/stop with error handling
-  - keyDown detection without logging typed characters
-  - modifier-only handling for anti-flapping behavior
-- Input source service (Carbon TIS):
-  - list enabled/all sources
-  - read current source
-  - select source by ID
-- Per-device mappings.
-- Per-device fallback input source.
-- Global fallback input source.
-- Undo for the last auto-switch action.
-- Debounce + cooldown via `SwitchController`.
-- Conflict detection:
-  - detects mappings that target missing/disabled sources
-  - surfaces conflicts in menu and settings
-- Debug window with ring-buffer logs:
-  - live view
-  - copy to clipboard
-  - export as `.txt`
-- Quit action directly in the menu.
-- No external dependencies.
+It never reads what you type. The HID callback extracts exactly two things — the device that sent the event, and whether the key was a modifier — and nothing else is kept. There is no key code, no character, no text, anywhere in the app. Nothing is sent off your Mac: the only network traffic is the update check, and the only third-party dependency is the Sparkle updater.
 
-## Privacy and Security
+See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report a vulnerability.
 
-- No keylogging.
-- No typed text is stored.
-- No keycodes or app content are stored.
-- HID events are only used for device/event classification and switching logic.
-- Debug logs contain technical status/error information only.
-- Exported logs are sanitized (sensitive tokens are redacted).
+## Features
 
-## Installation
+- **Per-keyboard input sources** — map each keyboard to the layout you want.
+- **Fallbacks** — a per-device fallback for when a mapping breaks, and a global fallback for unmapped keyboards.
+- **Undo** — revert the last automatic switch from the menu.
+- **Pause** — silence auto-switching for 15 or 60 minutes when it would get in the way.
+- **Conflict detection** — spots mappings that point at an input source you have since removed or disabled, and offers to fix them.
+- **Stable device identity** — keyboards are matched on vendor, product, transport and name, so unplugging and replugging (or moving to another USB port) keeps your mapping.
+- **No flapping** — a 400 ms debounce and a 1.5 s cooldown stop rapid switching, and modifier-only presses (a lone ⇧ or ⌘ during ⌘-Tab) are ignored by default.
+- **Debug log** — an in-app log window you can copy or export when reporting a bug. It contains device and status information only, never typed text.
 
-1. Download the latest `InputPilot.dmg` from the [GitHub Releases page](https://github.com/LucaGerlich/InputPilot/releases).
-2. Open the DMG and drag `InputPilot.app` into `Applications`.
-3. Launch InputPilot. A keyboard icon appears in the menu bar (there is no Dock icon).
-4. Grant **Input Monitoring** permission when prompted (System Settings → Privacy & Security → Input Monitoring). InputPilot needs it to detect *which* keyboard produced a key event — it never reads or stores what you type.
-5. Press a key on each keyboard you want to configure, then open `Settings…` and assign an input source per keyboard.
+## How it works
 
-If macOS reports the app as damaged or from an unidentified developer, the build you downloaded is not the notarized release — download only from the official Releases page.
+1. A HID callback reports which keyboard produced the latest key press.
+2. InputPilot resolves the target input source for that device, in order: **device mapping → per-device fallback → global fallback**. If none apply, it does nothing.
+3. After the debounce settles, it switches the input source through the Text Input Sources (TIS) API.
 
-## Requirements
+Auto-switching only runs when it is enabled and not paused.
 
-- macOS 13.0 (Ventura) or newer
-- To build from source: Xcode 26+ (the project uses the Xcode 16+ project format and a Swift 6.2 toolchain)
+## Settings
 
-## Build and Run
-
-1. Open the project:
-   - `InputPilot.xcodeproj`
-2. Select the `InputPilot` scheme.
-3. Run the app.
-4. Grant Input Monitoring permission when prompted.
-
-CLI build:
-
-```bash
-xcodebuild -scheme InputPilot -destination 'platform=macOS' build
-```
-
-## How to Use
-
-### Initial Setup
-
-1. Launch the app (keyboard icon in the menu bar).
-2. If permission is missing in the menu:
-   - click `Request Permission`
-   - if needed, click `Open Input Monitoring Settings`
-3. Press at least one key on each keyboard you want to configure so the device is detected.
-4. Open `Settings…` and configure a mapping for each device.
-
-### Key Menu Actions
-
-- `Auto-Switch` on/off
-- `Pause 15 min` / `Pause 60 min` / `Resume`
-- `Last switch` + `Undo`
-- `Open Debug`
-- `Quit InputPilot`
-
-### Settings Overview
-
-- `Auto-Switch`: pause state, last action, latest error
-- `Input Monitoring`: permission and active device/source status
-- `Input Sources`: current source and ID
-- `Fallbacks`: global fallback and quick action to use current source
-- `Conflicts`: invalid mappings with `Fix...` action
-- `Keyboard Device Mappings`: mapping, per-device fallback, forget device
-
-## Auto-Switch Logic (Important)
-
-### Target Source Resolution Order
-
-1. Device mapping
-2. Per-device fallback
-3. Global fallback
-4. Otherwise no action
-
-Auto-switch is active only when `isAutoSwitchActive == true`:
-
-- `autoSwitchEnabled == true`
-- not paused (`pauseUntil` is `nil` or in the past)
-
-### Stabilization Against Flapping
-
-- Debounce: `400ms` (default)
-- Cooldown after successful switch: `1500ms`
-- Modifier-only key presses (a lone Shift/Cmd/Option, e.g. during Cmd+Tab) do not trigger switching by default. The Settings toggle "Switch on modifier-only key presses" opts back in.
-
-### Fingerprint and Matching
-
-- Primary match key: `vendorId + productId + transport + isBuiltIn (+ normalized productName)`
-- `locationId` is used as a hint/tie-breaker
-- Goal: stable behavior across port changes and varying HID metadata
-
-## Persisted Data
-
-InputPilot stores the following in `UserDefaults`:
-
-- auto-switch enabled flag
-- modifier-only switching opt-in flag
-- pause-until timestamp
-- global fallback input source ID
-- device mappings (including per-device fallback)
-- migration flag for mapping schema (legacy -> v2)
-- if mapping data ever fails to decode, the raw payload is preserved under a `.corrupted` backup key instead of being overwritten
-
-Not persisted:
-
-- `lastAction` (runtime only)
-- debug log ring buffer (runtime only)
-
-## Debugging
-
-`Open Debug` in the menu opens a dedicated window with:
-
-- log list (newest first)
-- level (`INFO`, `WARN`, `ERROR`)
-- category and timestamp
-- `Copy to Clipboard`
-- `Export…`
-
-Recommended issue workflow:
-
-1. Open Debug window.
-2. Reproduce the issue.
-3. Export logs.
-4. Inspect relevant error lines.
-
-## Tests
-
-Test framework: Swift Testing (`import Testing`)
-
-Covered areas:
-
-- `AppState` auto-switch behavior including pause/resume/undo
-- `SwitchController` debounce/cooldown behavior
-- `MappingStore` roundtrip, conflicts, migration
-- `DebugLogService` ring buffer and privacy sanitization
-
-Run tests:
-
-```bash
-xcodebuild -scheme InputPilot -destination 'platform=macOS' test
-```
-
-## Project Structure
-
-```text
-InputPilot/
-  App/
-    AppState.swift
-    InputPilotApp.swift
-  Services/
-    PermissionService.swift
-    HIDKeyboardMonitor.swift
-    InputSourceService.swift
-    SwitchController.swift
-    DebugLogService.swift
-    ServiceProtocols.swift
-  Models/
-    ActiveKeyboardDevice.swift
-    KeyboardFingerprint.swift
-    KeyboardDeviceKey.swift
-    KeyboardEventKind.swift
-    InputSourceInfo.swift
-    InputStatusSnapshot.swift
-    MappingConflict.swift
-    SwitchAction.swift
-  Persistence/
-    MappingStore.swift
-    AppSettingsStore.swift
-  UI/
-    MenuBarMenuView.swift
-    SettingsView.swift
-    AboutSection.swift
-    DebugLogView.swift
-Scripts/
-  release.sh
-  ExportOptions.plist
-```
-
-## Architecture
-
-- `AppState` is the central orchestrator (UI state + switch decisions).
-- Services are abstracted behind protocols (`PermissionServicing`, `HIDKeyboardMonitoring`, `InputSourceServicing`, `MappingStoring`, `ClockProviding`, `DebugLogServicing`).
-- `SwitchController` encapsulates debounce/cooldown independent of UI.
-- Persistence is intentionally lightweight (`UserDefaults` via stores).
+| Section | What it does |
+|---|---|
+| Auto-Switch | Pause state, modifier-only opt-in, last action, last error |
+| Input Monitoring | Permission status and the currently active keyboard |
+| Input Sources | The current input source and its identifier |
+| Fallbacks | Global fallback, plus a shortcut to adopt the current source |
+| Conflicts | Mappings pointing at missing or disabled sources, with a fix action |
+| Keyboard Device Mappings | Per-keyboard input source, per-device fallback, forget device |
 
 ## Troubleshooting
 
-### "Permission granted, but monitor does not start"
+**Nothing switches.** Check the menu bar icon: it shows whether the permission is granted and whether the monitor is running. Auto-switch must be enabled and not paused, and the target input source must still be enabled in System Settings → Keyboard → Input Sources.
 
-- Verify Input Monitoring permission in macOS Privacy settings.
-- Restart the app.
-- Check logs for `kIOReturnNotPermitted` or `kIOReturnNotPrivileged`.
+**Permission granted but nothing happens.** macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.
 
-### No devices are detected
+**A keyboard is not detected.** Press a key on it — mouse movement is not enough. InputPilot only learns about a keyboard once it produces a key event.
 
-- Confirm Input Monitoring is actually `granted`.
-- Press a key on the target keyboard (mouse movement is not enough).
-- Check `Status` and `Active Keyboard Device` in the menu.
+**It switches too eagerly.** Turn off "Switch on modifier-only key presses" in Settings if you turned it on. For unusual setups such as a KVM, give each device an explicit mapping or fallback.
 
-### Input source is not switching
+**Reporting a bug.** Open the debug log from the menu bar, reproduce the problem, export the log, and attach it to a [new issue](https://github.com/LucaGerlich/InputPilot/issues/new/choose). The log is safe to share.
 
-- Verify the device mapping in Settings.
-- Ensure the target source is enabled and selectable.
-- Check `Conflicts` for `missing/disabled`.
-- Verify pause state and `Auto-Switch` toggle.
+## What it stores
 
-### Too many switches
+Settings live in `UserDefaults`: the auto-switch and modifier-only flags, the pause timestamp, the global fallback, your device mappings, and a schema migration flag. The last switch and the debug log are in memory only and disappear when you quit. If stored mappings ever fail to decode, the raw data is preserved under a `.corrupted` key rather than being overwritten.
 
-- Debounce/cooldown is active; inspect logs for edge cases.
-- For unstable setups (for example KVM), configure explicit mapping/fallback.
+## Requirements
 
-## Known Limitations
+macOS 13.0 (Ventura) or newer, Apple silicon or Intel.
 
-- macOS only.
-- Input Monitoring permission is required.
-- Detection depends on keyboard events; no key event means no active-device update.
-- No cloud sync/profile/hotkey management in the current `main` branch.
+---
 
-## Releasing
+## Development
 
-Maintainer workflow (requires a Developer ID Application certificate, notarytool credentials, and Sparkle EdDSA keys):
+Building from source needs **Xcode 26** or newer (the project uses the Xcode 16+ project format and a Swift 6.2 toolchain).
 
 ```bash
-Scripts/release.sh 1.0.0
+git clone https://github.com/LucaGerlich/InputPilot.git
+cd InputPilot
+xcodebuild -scheme InputPilot -destination 'platform=macOS' build
+xcodebuild -scheme InputPilot -destination 'platform=macOS' test
 ```
 
-The script archives a Release build, exports with Developer ID, notarizes and staples, packages a DMG, and generates the Sparkle appcast. Attach the DMG and `appcast.xml` to a tagged GitHub Release.
+Open `InputPilot.xcodeproj` and press ⌘R to run. Note that an app launched from Xcode runs under the debugger, and macOS attributes Input Monitoring to Xcode rather than to the app — to test the permission flow, run a built copy from Finder instead.
+
+### Architecture
+
+`AppState` is the orchestrator: it owns the published UI state and makes every switch decision. Everything it touches sits behind a protocol (`PermissionServicing`, `HIDKeyboardMonitoring`, `InputSourceServicing`, `MappingStoring`, `ClockProviding`, `DebugLogServicing`), so the logic is testable without HID hardware or a real input source. `SwitchController` isolates debounce and cooldown behind an injectable clock. Persistence is deliberately plain `UserDefaults` behind small stores.
+
+```text
+InputPilot/
+  App/          AppState (orchestration), InputPilotApp (scenes)
+  Services/     HID monitoring, input sources, permissions, updates, logging
+  Models/       Device identity, fingerprints, events, snapshots
+  Persistence/  Mapping and settings stores
+  UI/           Menu bar, settings, welcome, debug log
+Scripts/        release.sh, ExportOptions.plist
+Config/         AppInfo.plist (privacy strings, Sparkle feed)
+docs/           Engineering notes
+```
+
+### Tests
+
+Swift Testing (`import Testing`). Covered: auto-switch behaviour including pause, resume and undo; failure paths such as denied or revoked permission, a HID monitor that will not start, and a failing input-source switch; debounce and cooldown under a controlled clock; mapping persistence, migration and corrupt-data recovery; and the debug log's ring buffer and redaction.
+
+### Releasing
+
+Maintainers only; needs a Developer ID certificate, notarytool credentials, and the Sparkle signing key.
+
+```bash
+Scripts/release.sh 1.0.2
+```
+
+The script verifies versions, archives, exports with Developer ID, notarizes and staples both the app and the DMG, checks Gatekeeper, and generates the appcast. It then prints the remaining steps: tag, publish the release with the DMG attached, and commit the updated `appcast.xml`.
+
+## Contributing
+
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Changes to the release pipeline or the permission flow should say how they were verified, since neither is covered by automated tests.
 
 ## License
 
-InputPilot is licensed under the [Apache License 2.0](LICENSE).
+[Apache License 2.0](LICENSE) © 2026 Luca Gerlich
