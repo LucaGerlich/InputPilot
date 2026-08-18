@@ -3,15 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>InputPilot — the layout follows the keyboard</title>
-<meta name="description" content="A macOS menu bar app that detects which keyboard you are typing on and switches the input source to match. Free, open source, notarized.">
-<link rel="icon" href="icon.png">
-<meta property="og:title" content="InputPilot — the layout follows the keyboard">
-<meta property="og:description" content="Detects which keyboard you are typing on and switches the macOS input source to match.">
-<meta property="og:image" content="https://lucagerlich.github.io/InputPilot/icon.png">
-<meta property="og:url" content="https://lucagerlich.github.io/InputPilot/">
+<title>InputPilot — automatic keyboard layout switching for macOS</title>
+<meta name="description" content="A free macOS menu bar app that switches your keyboard layout automatically to match the keyboard you are typing on — internal, external, wired or Bluetooth.">
+<link rel="canonical" href="https://inputpilot.lucagerlich.dev/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Luca Gerlich">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090B">
+<link rel="icon" type="image/png" sizes="512x512" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://api.github.com">
+<meta property="og:site_name" content="InputPilot">
+<meta property="og:title" content="InputPilot — automatic keyboard layout switching for macOS">
+<meta property="og:description" content="Type on your German external keyboard, get German. Type on the MacBook, get U.S. InputPilot switches the macOS input source per keyboard, automatically.">
+<meta property="og:image" content="https://inputpilot.lucagerlich.dev/icon.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="The InputPilot app icon">
+<meta property="og:url" content="https://inputpilot.lucagerlich.dev/">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="InputPilot — automatic keyboard layout switching for macOS">
+<meta name="twitter:description" content="Type on your German external keyboard, get German. Type on the MacBook, get U.S. InputPilot switches the macOS input source per keyboard, automatically.">
+<meta name="twitter:image" content="https://inputpilot.lucagerlich.dev/icon.png">
 <style>
 	:root {
 		--bg:#08090B; --panel:#0D0F13; --panel-2:#101317;
@@ -100,7 +115,7 @@
 	/* ---- sections ---- */
 	section { padding:3.5rem 0; border-top:1px solid var(--line); }
 	h2 { font-size:1.15rem; margin:0 0 .4rem; letter-spacing:-0.01em; }
-	h2::before { content:"# "; color:var(--faint); }
+	h2::before { content:"# " / ""; color:var(--faint); }
 	.lede { color:var(--dim); margin:0 0 2rem; max-width:74ch; }
 
 	/* log panel */
@@ -136,14 +151,14 @@
 
 	ul.checks { list-style:none; padding:0; margin:1rem 0 0; }
 	ul.checks li { color:var(--dim); padding-left:1.5rem; position:relative; margin-bottom:.55rem; }
-	ul.checks li::before { content:"›"; position:absolute; left:.3rem; color:var(--green); }
+	ul.checks li::before { content:"›" / ""; position:absolute; left:.3rem; color:var(--green); }
 	ul.checks b { color:var(--fg); font-weight:600; }
 
 	details { border-bottom:1px solid var(--line); padding:.85rem 0; }
 	summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:1rem; font-size:.92rem; }
 	summary::-webkit-details-marker { display:none; }
-	summary::after { content:"[+]"; color:var(--faint); }
-	details[open] summary::after { content:"[-]"; }
+	summary::after { content:"[+]" / ""; color:var(--faint); }
+	details[open] summary::after { content:"[-]" / ""; }
 	details p { color:var(--dim); margin:.7rem 0 0; font-size:.88rem; }
 
 	footer { border-top:1px solid var(--line); padding:1.1rem 0; color:var(--faint); font-size:.78rem; }
@@ -156,10 +171,151 @@
 	.blink { animation:blink 1.15s steps(2) infinite; }
 	@keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:.15} }
 </style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://inputpilot.lucagerlich.dev/#app",
+   "name": "InputPilot",
+   "description": "InputPilot is a free, open-source macOS menu bar app that detects which physical keyboard you are typing on and automatically switches the macOS input source to match. Map an input source to each keyboard once — built-in, external, USB or Bluetooth — and the layout follows the keyboard instead of the app or window.",
+   "url": "https://inputpilot.lucagerlich.dev/",
+   "applicationCategory": "UtilitiesApplication",
+   "applicationSubCategory": "Keyboard layout switcher",
+   "operatingSystem": "macOS",
+   "softwareRequirements": "macOS 13.0 or later",
+   "softwareVersion": "1.0.1",
+   "datePublished": "2026-08-18",
+   "downloadUrl": "https://github.com/LucaGerlich/InputPilot/releases/latest",
+   "releaseNotes": "https://github.com/LucaGerlich/InputPilot/blob/main/CHANGELOG.md",
+   "license": "https://www.apache.org/licenses/LICENSE-2.0",
+   "isAccessibleForFree": true,
+   "image": "https://inputpilot.lucagerlich.dev/icon.png",
+   "featureList": [
+    "Detects the physical keyboard that produced each key press",
+    "Switches the macOS input source automatically, per keyboard",
+    "Recognises keyboards again after unplugging, reconnecting or changing port",
+    "Works with USB and Bluetooth keyboards",
+    "Per-device and global fallback input sources",
+    "Debounce and cooldown prevent layout flapping",
+    "Reads only the source device and modifier flag, never key codes or typed text",
+    "No telemetry, no analytics, no crash reporting"
+   ],
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://github.com/LucaGerlich/InputPilot/releases/latest"
+   },
+   "author": {
+    "@id": "https://github.com/LucaGerlich#person"
+   },
+   "sameAs": [
+    "https://github.com/LucaGerlich/InputPilot"
+   ]
+  },
+  {
+   "@type": "SoftwareSourceCode",
+   "@id": "https://github.com/LucaGerlich/InputPilot#source",
+   "name": "InputPilot source code",
+   "codeRepository": "https://github.com/LucaGerlich/InputPilot",
+   "programmingLanguage": "Swift",
+   "runtimePlatform": "macOS",
+   "license": "https://www.apache.org/licenses/LICENSE-2.0",
+   "author": {
+    "@id": "https://github.com/LucaGerlich#person"
+   },
+   "targetProduct": {
+    "@id": "https://inputpilot.lucagerlich.dev/#app"
+   }
+  },
+  {
+   "@type": "Person",
+   "@id": "https://github.com/LucaGerlich#person",
+   "name": "Luca Gerlich",
+   "url": "https://github.com/LucaGerlich"
+  },
+  {
+   "@type": "WebSite",
+   "@id": "https://inputpilot.lucagerlich.dev/#website",
+   "name": "InputPilot",
+   "url": "https://inputpilot.lucagerlich.dev/",
+   "inLanguage": "en",
+   "about": {
+    "@id": "https://inputpilot.lucagerlich.dev/#app"
+   }
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://inputpilot.lucagerlich.dev/#faq",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Why is it not on the App Store?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Sandboxed apps cannot read HID devices directly, and that is the only way to tell keyboards apart. So InputPilot ships outside the App Store, signed with a Developer ID certificate and notarized by Apple — it opens without warnings."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "InputPilot does not appear under Input Monitoring.",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Some Macs do not populate that list automatically. Add it by hand: System Settings → Privacy & Security → Input Monitoring → + → pick InputPilot in Applications, then switch it on."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "I granted permission but nothing happens.",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it work with Bluetooth keyboards?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "I use a German external keyboard with a US MacBook. Does this fix it?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "That is the case it was written for. Map the external board to German and the built-in one to U.S. once. From then on the layout is right the moment you start typing on either — no shortcut, no menu, nothing to remember."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "How is this different from autokbisw or Input Source Pro?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Input Source Pro and similar tools switch per app or per window. autokbisw switches per keyboard from the command line, with no interface. InputPilot switches per keyboard with a menu bar app you can configure — you pick the input source for each device instead of editing a config or trusting a guess about which language you are typing."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What does it cost?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Nothing. Free and open source under the Apache 2.0 licence."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
 </head>
 <body>
 
-<div class="top">
+<header class="top">
 	<div class="wrap">
 		<span class="logo">InputPilot</span>
 		<nav>
@@ -170,7 +326,7 @@
 		</nav>
 		<span class="right"><a class="ghost" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download</a></span>
 	</div>
-</div>
+</header>
 
 <div class="wrap hero">
 	<div class="term">
@@ -180,7 +336,7 @@
 		</div>
 		<div class="art-pad">
 <div class="art-stack">
-<pre class="art on" id="kbd-iso" aria-label="An ISO keyboard rendered in ASCII">
+<pre class="art on" id="kbd-iso" role="img" aria-label="ASCII art of an ISO keyboard, with a tall L-shaped Enter key and a short left Shift">
 <i data-key="0-0"> =========.</i> <i data-key="0-1">-========.</i> <i data-key="0-2">:========-</i> <i data-key="0-3">.========-</i> <i data-key="0-4"> ========= </i><i data-key="0-5"> =========.</i> <i data-key="0-6">-========.</i> <i data-key="0-7">:========-</i> <i data-key="0-8">.========-</i> <i data-key="0-9"> ========= </i><i data-key="0-10"> =========.</i> <i data-key="0-11">-========.</i> <i data-key="0-12">:========-</i> <i data-key="0-13">.==================== </i>
 <i data-key="0-0">:@@@@=@@@@+</i> <i data-key="0-1">@@@@%*@@@%</i> <i data-key="0-2">@@@@++@@@@</i> <i data-key="0-3">#@@@+=%@@@</i> <i data-key="0-4">=@@@@%*@@@:</i><i data-key="0-5">:@@@*==%@@+</i> <i data-key="0-6">@@@@==@@@%</i> <i data-key="0-7">@@@++++@@@</i> <i data-key="0-8">#@@@+=%@@@</i> <i data-key="0-9">=@@@+=%@@@:</i><i data-key="0-10">:@@@#=#@@@+</i> <i data-key="0-11">@@@*-+@@@%</i> <i data-key="0-12">@@@@%+@@@@</i> <i data-key="0-13">#@@@@@@@@@@@@@@@@@@@@:</i>
 <i data-key="0-0">:@@@: .@@@+</i> <i data-key="0-1">@@@-  @@@%</i> <i data-key="0-2">@@@::. @@@</i> <i data-key="0-3">#@@+-..@@@</i> <i data-key="0-4">=@@@*  @@@:</i><i data-key="0-5">:@@@ .:%@@+</i> <i data-key="0-6">@@@ ::+@@%</i> <i data-key="0-7">@@@=- -@@@</i> <i data-key="0-8">#@@- : @@@</i> <i data-key="0-9">=@@- = %@@:</i><i data-key="0-10">:@@% + *@@+</i> <i data-key="0-11">@@@ = %@@%</i> <i data-key="0-12">@@@@*#@@@@</i> <i data-key="0-13">#@@@@@++@+@++*#%@@@@@:</i>
@@ -216,7 +372,7 @@
 <i data-key="4-0">.@@@@@@@@@@@@:</i><i data-key="4-1">.@@@@@@@@@@@@:</i><i data-key="4-2">.@@@@@@@@@@@@:</i><i data-key="4-3">.@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@:</i><i data-key="4-4">.@@@@@@@@@@@@:</i><i data-key="4-5">.@@@@@@@@@@@@:</i><i data-key="4-6">.@@@@@@@@@@@@:</i><i data-key="4-7">.@@@@@@@@@@@@:</i>
  ::::::::::::  ::::::::::::  ::::::::::::  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::  ::::::::::::  ::::::::::::  ::::::::::::  :::::::::::: 
 </pre>
-<pre class="art" id="kbd-ansi" aria-hidden="true">
+<pre class="art" id="kbd-ansi" role="img" aria-label="ASCII art of an ANSI keyboard, with a wide Enter key and a long left Shift" aria-hidden="true">
 <i data-key="0-0"> =========.</i> <i data-key="0-1">-========.</i> <i data-key="0-2">:========-</i> <i data-key="0-3">.========-</i> <i data-key="0-4"> ========= </i><i data-key="0-5"> =========.</i> <i data-key="0-6">-========.</i> <i data-key="0-7">:========-</i> <i data-key="0-8">.========-</i> <i data-key="0-9"> ========= </i><i data-key="0-10"> =========.</i> <i data-key="0-11">-========.</i> <i data-key="0-12">:========-</i> <i data-key="0-13">.==================== </i>
 <i data-key="0-0">:@@@%+@@@@+</i> <i data-key="0-1">@@@@%*@@@%</i> <i data-key="0-2">@@@@++@@@@</i> <i data-key="0-3">#@@@+=%@@@</i> <i data-key="0-4">=@@@@%*@@@:</i><i data-key="0-5">:@@@*==%@@+</i> <i data-key="0-6">@@@@==@@@%</i> <i data-key="0-7">@@@++++@@@</i> <i data-key="0-8">#@@@+=%@@@</i> <i data-key="0-9">=@@@+=%@@@:</i><i data-key="0-10">:@@@#=#@@@+</i> <i data-key="0-11">@@@@@@@@@%</i> <i data-key="0-12">@@@@@@@@@@</i> <i data-key="0-13">#@@@@@@@@@@@@@@@@@@@@:</i>
 <i data-key="0-0">:@@@@=@@@@+</i> <i data-key="0-1">@@@-  @@@%</i> <i data-key="0-2">@@@::. @@@</i> <i data-key="0-3">#@@+-..@@@</i> <i data-key="0-4">=@@@*  @@@:</i><i data-key="0-5">:@@@ .:%@@+</i> <i data-key="0-6">@@@ ::+@@%</i> <i data-key="0-7">@@@=- -@@@</i> <i data-key="0-8">#@@- : @@@</i> <i data-key="0-9">=@@- = %@@:</i><i data-key="0-10">:@@% + *@@+</i> <i data-key="0-11">@@@@==@@@%</i> <i data-key="0-12">@@@:...@@@</i> <i data-key="0-13">#@@@@@++@+@++*#%@@@@@:</i>
@@ -260,8 +416,8 @@
 		</div>
 	</div>
 
-	<h1>The layout follows the keyboard.<span class="sub">Not the app. Not the window.</span></h1>
-	<p class="tagline">macOS switches input sources per app and per window — never per keyboard. InputPilot watches which keyboard produced the last key press and switches the input source to match. <strong>Map each keyboard once, then forget it exists.</strong></p>
+	<h1>The layout follows the keyboard. <span class="sub">Not the app. Not the window.</span></h1>
+	<p class="tagline">macOS switches input sources per app and per window — never per keyboard. InputPilot watches which keyboard produced the last key press and switches the layout automatically, whether that is the built-in board or an external one. <strong>Map each keyboard once, then forget it exists.</strong></p>
 
 	<div class="cta">
 		<a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a>
@@ -322,13 +478,13 @@
 </section>
 
 <section id="how">
-	<h2>How it works</h2>
+	<h2>How the automatic switching works</h2>
 	<p class="lede">Three steps, once.</p>
 	<div class="steps">
 		<div class="step">
 			<div class="n">01</div>
 			<h3>Press a key</h3>
-			<p>Type on each keyboard so InputPilot learns it. Devices are recognised again after unplugging, reconnecting, or moving to another port.</p>
+			<p>Type on each keyboard so InputPilot learns it — built-in, external, USB or Bluetooth. Devices are remembered and recognised again after unplugging, reconnecting, or moving to another port.</p>
 		</div>
 		<div class="step">
 			<div class="n">02</div>
@@ -369,6 +525,10 @@
 		<p>macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.</p></details>
 	<details><summary>Does it work with Bluetooth keyboards?</summary>
 		<p>Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting.</p></details>
+	<details><summary>I use a German external keyboard with a US MacBook. Does this fix it?</summary>
+		<p>That is the case it was written for. Map the external board to German and the built-in one to U.S. once. From then on the layout is right the moment you start typing on either — no shortcut, no menu, nothing to remember.</p></details>
+	<details><summary>How is this different from autokbisw or Input Source Pro?</summary>
+		<p>Input Source Pro and similar tools switch per app or per window. autokbisw switches per keyboard from the command line, with no interface. InputPilot switches per keyboard with a menu bar app you can configure — you pick the input source for each device instead of editing a config or trusting a guess about which language you are typing.</p></details>
 	<details><summary>What does it cost?</summary>
 		<p>Nothing. Free and open source under the Apache 2.0 licence.</p></details>
 	</div>
@@ -376,7 +536,7 @@
 
 <section id="get" style="text-align:center">
 	<h2 style="display:inline-block">Stop fixing your layout by hand</h2>
-	<p class="lede" style="margin-inline:auto">macOS 13 or newer. About a minute to set up.</p>
+	<p class="lede" style="margin-inline:auto">A free, open source keyboard layout switcher for macOS 13 or newer. About a minute to set up.</p>
 	<div class="cta"><a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a></div>
 </section>
 

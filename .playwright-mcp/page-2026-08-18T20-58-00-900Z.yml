@@ -1,0 +1,224 @@
+- generic [active] [ref=f14e1]:
+  - navigation [ref=f14e2]:
+    - generic [ref=f14e3]:
+      - link "redlib." [ref=f14e4] [cursor=pointer]:
+        - /url: /
+      - group [ref=f14e5]:
+        - generic "Feeds" [ref=f14e6]
+    - generic [ref=f14e7]:
+      - textbox "Search redlib" [ref=f14e8]:
+        - /placeholder: Search
+      - generic [ref=f14e9]:
+        - checkbox "in /r/germany" [checked] [ref=f14e10]
+        - generic "Restrict search to this subreddit" [ref=f14e11]: in /r/germany
+      - button [ref=f14e12] [cursor=pointer]:
+        - img [ref=f14e13]: →
+    - generic [ref=f14e15]:
+      - link [ref=f14e16] [cursor=pointer]:
+        - /url: "#popup"
+      - link "settings" [ref=f14e20] [cursor=pointer]:
+        - /url: /settings
+        - img "settings" [ref=f14e21]
+  - main [ref=f14e24]:
+    - generic [ref=f14e25]:
+      - generic [ref=f14e26]:
+        - link "Posts" [ref=f14e27] [cursor=pointer]:
+          - /url: /r/germany
+        - generic [ref=f14e28]: Wiki
+      - generic [ref=f14e30]:
+        - list [ref=f14e32]:
+          - listitem [ref=f14e33]:
+            - link "Wiki Index" [ref=f14e34] [cursor=pointer]:
+              - /url: "#wiki_wiki_index"
+          - listitem [ref=f14e35]:
+            - list [ref=f14e36]:
+              - listitem [ref=f14e37]:
+                - link "General pages" [ref=f14e38] [cursor=pointer]:
+                  - /url: "#wiki_general_pages"
+              - listitem [ref=f14e39]:
+                - link "Subsections" [ref=f14e40] [cursor=pointer]:
+                  - /url: "#wiki_subsections"
+              - listitem [ref=f14e41]:
+                - link "Other subreddit wikis" [ref=f14e42] [cursor=pointer]:
+                  - /url: "#wiki_other_subreddit_wikis"
+              - listitem [ref=f14e43]:
+                - link "Shortcuts" [ref=f14e44] [cursor=pointer]:
+                  - /url: "#wiki_shortcuts"
+        - heading "Wiki Index" [level=1] [ref=f14e45]
+        - paragraph [ref=f14e46]
+        - paragraph [ref=f14e47]:
+          - strong [ref=f14e48]:
+            - text: Welcome to the
+            - link "/r/Germany" [ref=f14e49] [cursor=pointer]:
+              - /url: /r/Germany
+            - text: wiki! This wiki answers many frequently asked questions and gives tips on studying, working, travelling, and living in Germany.
+        - paragraph [ref=f14e50]
+        - heading "General pages" [level=2] [ref=f14e51]
+        - table [ref=f14e52]:
+          - rowgroup [ref=f14e53]:
+            - row [ref=f14e54]:
+              - columnheader "Link" [ref=f14e55]
+              - columnheader "Description" [ref=f14e56]
+          - rowgroup [ref=f14e57]:
+            - row [ref=f14e58]:
+              - cell [ref=f14e59]:
+                - link "FAQ" [ref=f14e60] [cursor=pointer]:
+                  - /url: /r/germany/wiki/faq
+              - cell "A collection of frequently asked questions and answers" [ref=f14e61]
+            - row [ref=f14e62]:
+              - cell [ref=f14e63]:
+                - link "How to move to Germany" [ref=f14e64] [cursor=pointer]:
+                  - /url: /r/germany/wiki/paths
+              - cell "The various paths for non-EU citizens to move to Germany" [ref=f14e65]
+            - row [ref=f14e66]:
+              - cell [ref=f14e67]:
+                - link "Citizenship by descent" [ref=f14e68] [cursor=pointer]:
+                  - /url: /r/germany/wiki/citizenship
+              - cell "Maybe you are already a German citizen without knowing it" [ref=f14e69]
+        - heading "Subsections" [level=2] [ref=f14e70]
+        - table [ref=f14e71]:
+          - rowgroup [ref=f14e72]:
+            - row [ref=f14e73]:
+              - columnheader "Link" [ref=f14e74]
+              - columnheader "Description" [ref=f14e75]
+          - rowgroup [ref=f14e76]:
+            - row [ref=f14e77]:
+              - cell [ref=f14e78]:
+                - link "Travelling" [ref=f14e79] [cursor=pointer]:
+                  - /url: /r/germany/wiki/travelling
+              - cell "Planning on travelling to Germany? On this page, you find both general advice and individual recommendations for particular cities and regions." [ref=f14e80]
+            - row [ref=f14e81]:
+              - cell [ref=f14e82]:
+                - link "Studying" [ref=f14e83] [cursor=pointer]:
+                  - /url: /r/germany/wiki/studying
+              - cell "How the German university system works, how to apply, what student life is like, and other related topics." [ref=f14e84]
+            - row [ref=f14e85]:
+              - cell [ref=f14e86]:
+                - link "Working" [ref=f14e87] [cursor=pointer]:
+                  - /url: /r/germany/wiki/working
+              - cell "How to get started working in Germany, where to find a job, which jobs are in high demand, and other topics related to working." [ref=f14e88]
+            - row [ref=f14e89]:
+              - cell [ref=f14e90]:
+                - link "Living" [ref=f14e91] [cursor=pointer]:
+                  - /url: /r/germany/wiki/living
+              - cell "Finding a place to live, money and banks, health insurance, cars and driving, shopping, internet and mobile phones, and similar topics." [ref=f14e92]
+            - row [ref=f14e93]:
+              - cell [ref=f14e94]:
+                - link "Culture" [ref=f14e95] [cursor=pointer]:
+                  - /url: /r/germany/wiki/culture
+              - cell "The culture pages bring you closer to German traditions, etiquette, music, films, etc." [ref=f14e96]
+        - heading "Other subreddit wikis" [level=2] [ref=f14e97]
+        - table [ref=f14e98]:
+          - rowgroup [ref=f14e99]:
+            - row [ref=f14e100]:
+              - columnheader "Link" [ref=f14e101]
+              - columnheader "Description" [ref=f14e102]
+          - rowgroup [ref=f14e103]:
+            - row [ref=f14e104]:
+              - cell [ref=f14e105]:
+                - link "Language" [ref=f14e106] [cursor=pointer]:
+                  - /url: /r/german/wiki/index
+              - cell [ref=f14e107]:
+                - text: For those interested in learning the language, here's the official
+                - link "/r/German" [ref=f14e108] [cursor=pointer]:
+                  - /url: /r/German
+                - text: wiki with tons of materials and tips!
+            - row [ref=f14e109]:
+              - cell [ref=f14e110]:
+                - link "List of German Subreddits" [ref=f14e111] [cursor=pointer]:
+                  - /url: /r/DACH/wiki/index
+              - cell "A comprehensive collection of all subreddits related to the German-speaking world." [ref=f14e112]
+        - heading "Shortcuts" [level=2] [ref=f14e113]
+        - paragraph [ref=f14e114]: "We want people with questions to read this Wiki, and many of our regulars like to point people to it. If you want to link another user to the Wiki, there are a number of shortcuts you can use at the start of a top-level comment. This will summon a bot which comments with a link to the corresponding Wiki page. Currently we have the following shortcuts, which should be self-explanatory:"
+        - paragraph [ref=f14e115]:
+          - code [ref=f14e116]: "!wiki"
+        - paragraph [ref=f14e117]:
+          - code [ref=f14e118]: "!FAQ"
+        - paragraph [ref=f14e119]:
+          - code [ref=f14e120]: "!studying"
+          - text: /
+          - code [ref=f14e121]: "!university"
+          - text: /
+          - code [ref=f14e122]: "!study"
+        - paragraph [ref=f14e123]:
+          - code [ref=f14e124]: "!housing"
+        - paragraph [ref=f14e125]:
+          - code [ref=f14e126]: "!insurance"
+        - paragraph [ref=f14e127]:
+          - code [ref=f14e128]: "!citizen"
+        - paragraph [ref=f14e129]:
+          - code [ref=f14e130]: "!visa"
+        - paragraph [ref=f14e131]:
+          - code [ref=f14e132]: "!culture"
+        - paragraph [ref=f14e133]:
+          - code [ref=f14e134]: "!knowinggerman"
+        - paragraph [ref=f14e135]:
+          - code [ref=f14e136]: "!language"
+        - paragraph [ref=f14e137]:
+          - code [ref=f14e138]: "!working"
+        - paragraph [ref=f14e139]:
+          - code [ref=f14e140]: "!remote"
+        - paragraph [ref=f14e141]:
+          - code [ref=f14e142]: "!phone"
+          - text: /
+          - code [ref=f14e143]: "!internet"
+        - paragraph [ref=f14e144]:
+          - code [ref=f14e145]: "!stare"
+          - text: /
+          - code [ref=f14e146]: "!staring"
+        - paragraph [ref=f14e147]:
+          - code [ref=f14e148]: "!property"
+        - paragraph [ref=f14e149]:
+          - code [ref=f14e150]: "!taxes"
+        - paragraph [ref=f14e151]:
+          - code [ref=f14e152]: "!finances"
+        - paragraph [ref=f14e153]:
+          - code [ref=f14e154]: "!bank"
+          - text: /
+          - code [ref=f14e155]: "!banking"
+        - paragraph [ref=f14e156]:
+          - code [ref=f14e157]: "!rundfunkbeitrag"
+          - text: /
+          - code [ref=f14e158]: "!gez"
+          - text: (yes, "GEZ" is an outdated term, but it's still commonly used, and it's shorter)
+        - paragraph [ref=f14e159]:
+          - code [ref=f14e160]: "!college"
+          - text: /
+          - code [ref=f14e161]: "!studienkolleg"
+          - text: /
+          - code [ref=f14e162]: "!studiencollege"
+        - paragraph [ref=f14e163]:
+          - code [ref=f14e164]: "!49"
+          - text: /!58
+          - code [ref=f14e165]: /!63
+          - text: /
+          - code [ref=f14e166]: "!deutschlandticket"
+          - text: /
+          - code [ref=f14e167]: "!ticket"
+        - paragraph [ref=f14e168]:
+          - code [ref=f14e169]: "!ausbildung"
+          - text: /
+          - code [ref=f14e170]: "!apprenticeship"
+        - paragraph [ref=f14e171]:
+          - code [ref=f14e172]: "!anmeldung"
+          - text: /
+          - code [ref=f14e173]: "!abmeldung"
+        - paragraph [ref=f14e174]:
+          - code [ref=f14e175]: "!weed"
+          - text: /
+          - code [ref=f14e176]: "!cannabis"
+          - text: /
+          - code [ref=f14e177]: "!bubatz"
+          - text: (someone requested that, don't ask me)
+        - paragraph [ref=f14e178]:
+          - strong [ref=f14e179]:
+            - text: Additional ones can be requested in a comment to
+            - link "this post" [ref=f14e180] [cursor=pointer]:
+              - /url: /r/germany/comments/ui05qk/wiki_shortcuts/?
+            - text: .
+  - contentinfo [ref=f14e181]:
+    - paragraph [ref=f14e183] [cursor=pointer]:
+      - link "ⓘ View instance info" [ref=f14e184]:
+        - /url: /info
+      - link "<> Code" [ref=f14e185]:
+        - /url: https://github.com/redlib-org/redlib
