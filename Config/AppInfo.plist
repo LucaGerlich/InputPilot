@@ -6,13 +6,13 @@
 	<string>InputPilot detects which keyboard you are typing on to switch your input language automatically. It never reads or stores what you type.</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/LucaGerlich/InputPilot/main/appcast.xml</string>
-	<!-- Before the first release: run Sparkle's generate_keys and add
-	     <key>SUPublicEDKey</key><string>...</string> here. The key must be
-	     ABSENT until then - an empty string is an invalid key and makes
-	     Sparkle abort with a fatal updater error at startup. -->
-	<!-- Keep automatic checks off until the appcast and EdDSA keys exist;
-	     users can still check manually from the menu bar. -->
+	<!-- EdDSA public key; the matching private key lives in the release
+	     machine's Keychain. Never set this to an empty string - an empty key
+	     is invalid and makes Sparkle abort with a fatal updater error. -->
+	<key>SUPublicEDKey</key>
+	<string>pssjO3kU2/CHGn3oOa4atzbvmFbwind07K8GZIuqOpY=</string>
+	<!-- Set explicitly so Sparkle skips its first-launch permission dialog. -->
 	<key>SUEnableAutomaticChecks</key>
-	<false/>
+	<true/>
 </dict>
 </plist>
