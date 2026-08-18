@@ -3,438 +3,332 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>InputPilot — your keyboard picks the language</title>
-<meta name="description" content="A small macOS menu bar app that notices which keyboard you are typing on and switches the input source to match. Free, open source, notarized.">
+<title>InputPilot — the layout follows the keyboard</title>
+<meta name="description" content="A macOS menu bar app that detects which keyboard you are typing on and switches the input source to match. Free, open source, notarized.">
 <link rel="icon" href="icon.png">
-<meta property="og:title" content="InputPilot — your keyboard picks the language">
-<meta property="og:description" content="Switches your macOS input source based on the keyboard you are typing on. Free and open source.">
+<meta property="og:title" content="InputPilot — the layout follows the keyboard">
+<meta property="og:description" content="Detects which keyboard you are typing on and switches the macOS input source to match.">
 <meta property="og:image" content="https://lucagerlich.github.io/InputPilot/icon.png">
 <meta property="og:url" content="https://lucagerlich.github.io/InputPilot/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <style>
 	:root {
-		--ground: #0B0E13;
-		--raised: #141922;
-		--keycap: #1C222D;
-		--keycap-edge: #2A3240;
-		--ink: #E9ECF1;
-		--muted: #929BAA;
-		--line: #222A36;
-		/* two accents = the two layouts being switched between */
-		--glow: #FFB020;
-		--cool: #4FB6F5;
-		--radius: 14px;
+		--bg:#08090B; --panel:#0D0F13; --panel-2:#101317;
+		--line:#1B2029; --line-2:#262C36;
+		--fg:#D6DAE1; --dim:#727A86; --faint:#4A515C;
+		--orange:#FF6B2C; --blue:#5B6CFF; --green:#3FB950;
 	}
-
-	* { box-sizing: border-box; }
-
-	html { scroll-behavior: smooth; }
-
+	* { box-sizing:border-box; }
+	html { scroll-behavior:smooth; }
 	body {
-		margin: 0;
-		background: var(--ground);
-		color: var(--ink);
-		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-		line-height: 1.6;
-		-webkit-font-smoothing: antialiased;
+		margin:0; background:var(--bg); color:var(--fg);
+		font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+		font-size:14px; line-height:1.65; -webkit-font-smoothing:antialiased;
 	}
+	a { color:var(--blue); text-decoration:none; }
+	a:hover { text-decoration:underline; }
+	.wrap { width:min(100% - 2rem, 1180px); margin-inline:auto; }
+	.narrow { max-width:78ch; }
 
-	.mono {
-		font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+	/* ---- top bar ---- */
+	.top { border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(8,9,11,.9); backdrop-filter:blur(8px); z-index:20; }
+	.top .wrap { display:flex; align-items:center; gap:1.5rem; height:56px; }
+	.logo { color:var(--orange); font-weight:700; font-size:1.05rem; letter-spacing:-0.01em; }
+	.top nav { display:flex; gap:1.4rem; margin-left:1rem; font-size:.85rem; }
+	.top nav a { color:var(--dim); }
+	.top nav a:hover { color:var(--fg); text-decoration:none; }
+	.top .right { margin-left:auto; }
+	.ghost {
+		border:1px solid var(--line-2); color:var(--fg); padding:.42rem .9rem;
+		border-radius:6px; font-size:.85rem; display:inline-block;
 	}
+	.ghost:hover { border-color:var(--dim); text-decoration:none; }
+	@media (max-width:760px){ .top nav { display:none; } }
 
-	.wrap {
-		width: min(100% - 2.5rem, 1080px);
-		margin-inline: auto;
+	/* ---- hero ---- */
+	.hero { padding:3.5rem 0 4rem; text-align:center; }
+	.term {
+		border:1px solid var(--line); border-radius:10px; background:var(--panel);
+		overflow:hidden; box-shadow:0 24px 60px -30px #000;
 	}
-
-	.narrow { width: min(100% - 2.5rem, 720px); margin-inline: auto; }
-
-	a { color: var(--cool); }
-
-	/* ---------- nav ---------- */
-	header.nav {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		padding: 1.25rem 0;
+	.term-bar {
+		display:flex; align-items:center; gap:.5rem; padding:.6rem .85rem;
+		border-bottom:1px solid var(--line); background:var(--panel-2);
 	}
-	.brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; letter-spacing: -0.01em; }
-	.brand img { width: 28px; height: 28px; border-radius: 7px; }
-	.nav-links { display: flex; gap: 1.4rem; font-size: 0.92rem; }
-	.nav-links a { color: var(--muted); text-decoration: none; }
-	.nav-links a:hover { color: var(--ink); }
-	@media (max-width: 640px) { .nav-links { display: none; } }
+	.dot { width:11px; height:11px; border-radius:50%; background:#2C323B; }
+	.dot:nth-child(1){ background:#FF5F57; } .dot:nth-child(2){ background:#FEBC2E; } .dot:nth-child(3){ background:#28C840; }
+	.term-title { margin-left:auto; margin-right:auto; color:var(--dim); font-size:.8rem; padding-right:44px; }
 
-	/* ---------- hero ---------- */
-	.hero {
-		display: grid;
-		grid-template-columns: 1.05fr 0.95fr;
-		gap: 3rem;
-		align-items: center;
-		padding: 3.5rem 0 4.5rem;
+	.art-pad { padding:2.2rem .75rem 1.6rem; overflow-x:auto; }
+	pre.art {
+		margin:0; display:inline-block; text-align:left; color:#6C7480;
+		/* 75 chars wide; ~0.6em per char, so this fills the terminal without overflowing */
+		font-size:clamp(5.5px, 1.72vw, 21px); line-height:1.15; letter-spacing:0;
 	}
-	/* grid items default to min-width:auto, which lets long unwrappable
-	   content (the brew command) stretch the whole page instead of scrolling */
-	.hero > * { min-width: 0; }
-	@media (max-width: 860px) {
-		.hero { grid-template-columns: 1fr; gap: 2.5rem; padding: 2rem 0 3rem; }
-	}
+	pre.art b.d { color:var(--orange); font-weight:400; }
+	.legend-row { display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap; color:var(--dim); font-size:.78rem; padding:0 1rem 1.4rem; }
+	.legend-row span b { color:var(--orange); font-weight:400; }
 
-	h1 {
-		font-size: clamp(2.1rem, 5.2vw, 3.4rem);
-		line-height: 1.08;
-		letter-spacing: -0.03em;
-		margin: 0 0 1rem;
-		text-wrap: balance;
-	}
-	h1 em { font-style: normal; color: var(--glow); }
-
-	.lede { font-size: 1.12rem; color: var(--muted); margin: 0 0 2rem; max-width: 46ch; }
-
-	.cta-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
-
+	.tagline { color:var(--dim); margin:2.2rem auto 1.6rem; max-width:62ch; font-size:.98rem; }
+	.tagline strong { color:var(--fg); font-weight:600; }
+	h1 { font-size:clamp(1.5rem,3.6vw,2.15rem); letter-spacing:-0.02em; margin:0 0 .6rem; text-wrap:balance; }
+	h1 .sub { display:block; color:var(--blue); }
+	.cta { display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap; }
 	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		background: var(--glow);
-		color: #16110A;
-		font-weight: 600;
-		font-size: 1rem;
-		text-decoration: none;
-		padding: 0.85rem 1.4rem;
-		border-radius: 11px;
-		min-height: 48px;
-		transition: transform 0.15s ease, filter 0.15s ease;
+		background:var(--blue); color:#fff; padding:.72rem 1.35rem; border-radius:7px;
+		font-size:.92rem; font-weight:600; min-height:46px; display:inline-flex; align-items:center; gap:.5rem;
 	}
-	.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-	.btn-ghost {
-		background: transparent;
-		color: var(--ink);
-		border: 1px solid var(--keycap-edge);
-	}
-	.btn-ghost:hover { border-color: var(--muted); }
+	.btn:hover { filter:brightness(1.1); text-decoration:none; }
+	.btn.alt { background:transparent; color:var(--fg); border:1px solid var(--line-2); }
+	.btn.alt:hover { border-color:var(--dim); }
+	.ver { color:var(--faint); font-size:.8rem; margin-top:1rem; }
 
-	.meta { font-size: 0.85rem; color: var(--muted); margin-top: 1rem; }
+	/* ---- sections ---- */
+	section { padding:3.5rem 0; border-top:1px solid var(--line); }
+	h2 { font-size:1.15rem; margin:0 0 .4rem; letter-spacing:-0.01em; }
+	h2::before { content:"# "; color:var(--faint); }
+	.lede { color:var(--dim); margin:0 0 2rem; max-width:74ch; }
 
-	.brew {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin-top: 1.5rem;
-		background: var(--raised);
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		padding: 0.7rem 0.9rem;
-		font-size: 0.88rem;
-		min-width: 0;
+	/* log panel */
+	.panel { border:1px solid var(--line); border-radius:8px; background:var(--panel); overflow:hidden; }
+	.panel-head {
+		display:flex; align-items:center; gap:.7rem; padding:.55rem .85rem;
+		border-bottom:1px solid var(--line); background:var(--panel-2); font-size:.82rem; color:var(--dim);
 	}
-	.brew code {
-		color: var(--ink);
-		white-space: nowrap;
-		/* the command scrolls inside its own box, never widening the page */
-		flex: 1 1 auto;
-		min-width: 0;
-		overflow-x: auto;
-	}
-	.brew button {
-		flex: 0 0 auto;
-		margin-left: auto;
-		background: transparent;
-		border: 1px solid var(--keycap-edge);
-		color: var(--muted);
-		border-radius: 7px;
-		padding: 0.3rem 0.6rem;
-		font-size: 0.78rem;
-		cursor: pointer;
-		white-space: nowrap;
-	}
-	.brew button:hover { color: var(--ink); border-color: var(--muted); }
+	.tag { border:1px solid var(--orange); color:var(--orange); font-size:.68rem; padding:0 .35rem; border-radius:3px; letter-spacing:.06em; }
+	.panel-head .r { margin-left:auto; color:var(--faint); }
+	.log { padding:.9rem .85rem; font-size:.8rem; line-height:1.85; overflow-x:auto; }
+	.log div { white-space:nowrap; }
+	.t { color:var(--faint); }
+	.i { color:var(--blue); } .w { color:var(--orange); } .c { color:var(--dim); }
+	.ok { color:var(--green); }
 
-	/* ---------- keycap visual ---------- */
-	.stage {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 1.4rem;
-		padding: 2.5rem 1rem;
-		background: radial-gradient(120% 90% at 50% 0%, #171D27 0%, var(--raised) 60%, var(--ground) 100%);
-		border: 1px solid var(--line);
-		border-radius: 20px;
-	}
+	/* device cards */
+	.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; margin-top:1.1rem; }
+	.card { border:1px solid var(--line); border-radius:8px; background:var(--panel); overflow:hidden; }
+	.card-head { padding:.5rem .8rem; border-bottom:1px solid var(--line); background:var(--panel-2); font-size:.82rem; }
+	.row { display:flex; justify-content:space-between; gap:1rem; padding:.36rem .8rem; font-size:.82rem; }
+	.row span:first-child { color:var(--dim); }
+	.row:not(:last-child) { border-bottom:1px solid rgba(27,32,41,.6); }
+	.muted .card-head, .muted .row span { color:var(--faint) !important; }
 
-	.key {
-		position: relative;
-		width: clamp(92px, 26vw, 124px);
-		height: clamp(92px, 26vw, 124px);
-		border-radius: var(--radius);
-		background: linear-gradient(180deg, var(--keycap-edge) 0%, var(--keycap) 55%);
-		border: 1px solid var(--keycap-edge);
-		box-shadow: 0 8px 0 -2px #0B0E13, 0 14px 24px rgba(0,0,0,0.45);
-		display: grid;
-		place-items: center;
-		text-align: center;
-	}
-	.key .legend { font-size: 1.5rem; font-weight: 600; letter-spacing: 0.02em; }
-	.key .sub { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; letter-spacing: 0.08em; text-transform: uppercase; }
+	/* steps */
+	.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
+	@media (max-width:800px){ .steps { grid-template-columns:1fr; } }
+	.step { border:1px solid var(--line); border-radius:8px; padding:1.1rem; background:var(--panel); }
+	.step .n { color:var(--orange); font-size:.78rem; }
+	.step h3 { margin:.4rem 0 .35rem; font-size:.95rem; }
+	.step p { margin:0; color:var(--dim); font-size:.86rem; }
 
-	.key.active {
-		animation: lit 6s ease-in-out infinite;
-	}
-	.key.active.second { animation-delay: 3s; }
+	ul.checks { list-style:none; padding:0; margin:1rem 0 0; }
+	ul.checks li { color:var(--dim); padding-left:1.5rem; position:relative; margin-bottom:.55rem; }
+	ul.checks li::before { content:"›"; position:absolute; left:.3rem; color:var(--green); }
+	ul.checks b { color:var(--fg); font-weight:600; }
 
-	@keyframes lit {
-		0%, 42% { border-color: var(--glow); box-shadow: 0 8px 0 -2px #0B0E13, 0 0 0 1px var(--glow), 0 10px 34px rgba(255,176,32,0.28); transform: translateY(2px); }
-		50%, 92% { border-color: var(--keycap-edge); box-shadow: 0 8px 0 -2px #0B0E13, 0 14px 24px rgba(0,0,0,0.45); transform: translateY(0); }
-		100% { border-color: var(--keycap-edge); }
-	}
+	details { border-bottom:1px solid var(--line); padding:.85rem 0; }
+	summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:1rem; font-size:.92rem; }
+	summary::-webkit-details-marker { display:none; }
+	summary::after { content:"[+]"; color:var(--faint); }
+	details[open] summary::after { content:"[-]"; }
+	details p { color:var(--dim); margin:.7rem 0 0; font-size:.88rem; }
 
-	.arrow { color: var(--muted); font-size: 1.4rem; }
+	footer { border-top:1px solid var(--line); padding:1.1rem 0; color:var(--faint); font-size:.78rem; }
+	footer .wrap { display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; align-items:center; }
+	footer a { color:var(--faint); }
+	footer .r { margin-left:auto; display:flex; gap:1.2rem; flex-wrap:wrap; }
 
-	@media (prefers-reduced-motion: reduce) {
-		.key.active { animation: none; border-color: var(--glow); }
-		html { scroll-behavior: auto; }
-	}
-
-	/* ---------- sections ---------- */
-	section { padding: 4rem 0; border-top: 1px solid var(--line); }
-	h2 {
-		font-size: clamp(1.5rem, 3.2vw, 2rem);
-		letter-spacing: -0.02em;
-		margin: 0 0 0.75rem;
-		text-wrap: balance;
-	}
-	.section-lede { color: var(--muted); margin: 0 0 2.5rem; max-width: 60ch; }
-
-	.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; counter-reset: step; }
-	@media (max-width: 780px) { .steps { grid-template-columns: 1fr; } }
-	.step { background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.4rem; }
-	.step::before {
-		counter-increment: step;
-		content: counter(step);
-		display: grid;
-		place-items: center;
-		width: 30px; height: 30px;
-		border-radius: 8px;
-		background: rgba(255,176,32,0.13);
-		color: var(--glow);
-		font-weight: 700;
-		font-size: 0.9rem;
-		margin-bottom: 0.9rem;
-	}
-	.step h3 { margin: 0 0 0.4rem; font-size: 1.02rem; }
-	.step p { margin: 0; color: var(--muted); font-size: 0.94rem; }
-
-	.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.25rem; }
-	.feature { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.3rem; background: var(--raised); }
-	.feature h3 { margin: 0 0 0.35rem; font-size: 1rem; }
-	.feature p { margin: 0; color: var(--muted); font-size: 0.93rem; }
-
-	.privacy {
-		background: linear-gradient(180deg, rgba(79,182,245,0.07), transparent);
-		border: 1px solid var(--line);
-		border-radius: 18px;
-		padding: 2rem;
-	}
-	.privacy ul { margin: 1rem 0 0; padding-left: 1.1rem; color: var(--muted); }
-	.privacy li { margin-bottom: 0.5rem; }
-	.privacy strong { color: var(--ink); font-weight: 600; }
-
-	details {
-		border-bottom: 1px solid var(--line);
-		padding: 1rem 0;
-	}
-	details summary {
-		cursor: pointer;
-		font-weight: 550;
-		list-style: none;
-		display: flex;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-	details summary::-webkit-details-marker { display: none; }
-	details summary::after { content: "+"; color: var(--muted); }
-	details[open] summary::after { content: "−"; }
-	details p { color: var(--muted); margin: 0.8rem 0 0; }
-
-	footer {
-		border-top: 1px solid var(--line);
-		padding: 2.5rem 0 3.5rem;
-		color: var(--muted);
-		font-size: 0.88rem;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 1rem;
-		justify-content: space-between;
-	}
-	footer a { color: var(--muted); text-decoration: none; margin-right: 1.2rem; }
-	footer a:hover { color: var(--ink); }
-
-	:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; border-radius: 4px; }
+	:focus-visible { outline:2px solid var(--orange); outline-offset:3px; }
+	@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto;} .blink{animation:none!important;} }
+	.blink { animation:blink 1.15s steps(2) infinite; }
+	@keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:.15} }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-	<header class="nav">
-		<div class="brand"><img src="icon.png" alt=""> InputPilot</div>
-		<nav class="nav-links">
+<div class="top">
+	<div class="wrap">
+		<span class="logo">InputPilot</span>
+		<nav>
 			<a href="#how">How it works</a>
-			<a href="#features">Features</a>
 			<a href="#privacy">Privacy</a>
-			<a href="https://github.com/LucaGerlich/InputPilot">GitHub</a>
+			<a href="#faq">FAQ</a>
+			<a href="https://github.com/LucaGerlich/InputPilot">Source</a>
 		</nav>
-	</header>
-
-	<div class="hero">
-		<div>
-			<h1>Your keyboard picks <em>the language</em>.</h1>
-			<p class="lede">InputPilot notices which keyboard you are typing on and switches the macOS input source to match. Map each keyboard once, then stop thinking about it.</p>
-
-			<div class="cta-row">
-				<a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a>
-				<a class="btn btn-ghost" href="https://github.com/LucaGerlich/InputPilot">View source</a>
-			</div>
-
-			<div class="brew">
-				<code class="mono" id="brewcmd">brew install --cask lucagerlich/tap/inputpilot</code>
-				<button type="button" onclick="navigator.clipboard.writeText(document.getElementById('brewcmd').textContent).then(()=>{this.textContent='Copied';setTimeout(()=>this.textContent='Copy',1600)})">Copy</button>
-			</div>
-
-			<p class="meta">Free and open source · macOS 13+ · signed and notarized by Apple</p>
-		</div>
-
-		<div class="stage" aria-hidden="true">
-			<div class="key active">
-				<span class="legend mono">DE<span class="sub">built-in</span></span>
-			</div>
-			<div class="arrow">⇄</div>
-			<div class="key active second">
-				<span class="legend mono">US<span class="sub">external</span></span>
-			</div>
-		</div>
+		<span class="right"><a class="ghost" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download</a></span>
 	</div>
 </div>
 
-<div class="wrap">
-	<section id="problem">
-		<h2>The two-keyboard shuffle</h2>
-		<p class="section-lede">A German keyboard on the desk, a US layout built into the laptop. Every time you move between them, the layout is wrong: the y and z swap, the slashes hide somewhere else, and you fix it by hand — again. macOS switches input sources per app, per document, per window. It does not switch per keyboard.</p>
-		<p class="section-lede">InputPilot does exactly that, and nothing else.</p>
-	</section>
-
-	<section id="how">
-		<h2>How it works</h2>
-		<p class="section-lede">Three steps, once.</p>
-		<div class="steps">
-			<div class="step">
-				<h3>Press a key</h3>
-				<p>Type on each keyboard so InputPilot learns it. Keyboards are recognised again after unplugging, reconnecting, or moving to another port.</p>
-			</div>
-			<div class="step">
-				<h3>Pick a layout</h3>
-				<p>Assign an input source to each keyboard in Settings. Add fallbacks if you want a sensible default for anything unmapped.</p>
-			</div>
-			<div class="step">
-				<h3>Forget about it</h3>
-				<p>Start typing and the layout follows the keyboard. A debounce and cooldown keep it from flapping when you switch quickly.</p>
-			</div>
+<div class="wrap hero">
+	<div class="term">
+		<div class="term-bar">
+			<span class="dot"></span><span class="dot"></span><span class="dot"></span>
+			<span class="term-title">inputpilot — active keyboard</span>
 		</div>
-	</section>
-
-	<section id="features">
-		<h2>What it does</h2>
-		<p class="section-lede">Small on purpose. It solves one problem properly instead of becoming a keyboard manager.</p>
-		<div class="features">
-			<div class="feature">
-				<h3>Per-keyboard mapping</h3>
-				<p>Each keyboard gets its own input source, with per-device and global fallbacks for everything else.</p>
-			</div>
-			<div class="feature">
-				<h3>Undo</h3>
-				<p>Reverse the last automatic switch from the menu bar when it guesses wrong.</p>
-			</div>
-			<div class="feature">
-				<h3>Pause</h3>
-				<p>Silence switching for 15 or 60 minutes when it would get in the way.</p>
-			</div>
-			<div class="feature">
-				<h3>Conflict detection</h3>
-				<p>Notices when a mapping points at an input source you have since removed, and offers to fix it.</p>
-			</div>
-			<div class="feature">
-				<h3>Modifiers ignored</h3>
-				<p>A lone ⇧ or ⌘ during ⌘-Tab will not change your layout. Opt in if you want it to.</p>
-			</div>
-			<div class="feature">
-				<h3>Automatic updates</h3>
-				<p>Signed updates through Sparkle, verified against Apple's notarization and a cryptographic signature.</p>
-			</div>
+		<div class="art-pad">
+<pre class="art">╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭────────╮
+│ ` ││ 1 ││ 2 ││ 3 ││ 4 ││ 5 ││ 6 ││ 7 ││ 8 ││ 9 ││ 0 ││ <b class="d">ß</b> ││ <b class="d">´</b> ││   ⌫    │
+╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰────────╯
+╭────────╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮
+│   ⇥    ││ Q ││ W ││ E ││ R ││ T ││ <b class="d">Z</b> ││ U ││ I ││ O ││ P ││ <b class="d">Ü</b> ││ <b class="d">+</b> ││ <b class="d">#</b> │
+╰────────╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯
+╭────────╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭────────╮
+│   ⇪    ││ A ││ S ││ D ││ F ││ G ││ H ││ J ││ K ││ L ││ <b class="d">Ö</b> ││ <b class="d">Ä</b> ││   ⏎    │
+╰────────╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰────────╯
+╭────────╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭─────────────╮
+│   ⇧    ││ <b class="d">Y</b> ││ X ││ C ││ V ││ B ││ N ││ M ││ , ││ . ││ <b class="d">-</b> ││      ⇧      │
+╰────────╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰─────────────╯
+╭────────╮╭────────╮╭────────╮╭───────────────────────╮╭────────╮╭───╮╭───╮
+│   ⌃    ││   ⌥    ││   ⌘    ││                       ││   ⌘    ││ ⌥ ││ ⌃ │
+╰────────╯╰────────╯╰────────╯╰───────────────────────╯╰────────╯╰───╯╰───╯</pre>
 		</div>
-	</section>
-
-	<section id="privacy">
-		<h2>About that permission</h2>
-		<p class="section-lede">InputPilot asks for Input Monitoring — the permission that lets an app see keyboard events. That is a lot to ask for, so here is precisely what it does with it.</p>
-		<div class="privacy">
-			<p><strong>It reads which keyboard sent a key press. It does not read the key.</strong></p>
-			<ul>
-				<li>The HID callback takes two things from each event: the device that sent it, and whether the key was a modifier. Nothing else.</li>
-				<li>No key code, no character, no typed text exists anywhere in the app — not in memory, not on disk, not in the debug log.</li>
-				<li>The only network traffic is the update check. No telemetry, no analytics, no crash reporter.</li>
-				<li>The source is public and the whole app is about 4,000 lines. You can read the keyboard handling in a few minutes.</li>
-			</ul>
-			<p style="margin-top:1.2rem"><a href="https://github.com/LucaGerlich/InputPilot/blob/main/SECURITY.md">Read the full privacy statement →</a></p>
+		<div class="legend-row">
+			<span><b>■</b> keys that move between German and U.S. layouts</span>
+			<span>de ⇄ us</span>
 		</div>
-	</section>
+	</div>
 
-	<section id="faq">
-		<h2>Questions</h2>
-		<details>
-			<summary>Why is it not on the App Store?</summary>
-			<p>Sandboxed apps cannot read HID devices directly, and that is the only way to tell keyboards apart. So InputPilot is distributed outside the App Store, signed with a Developer ID certificate and notarized by Apple — it opens without warnings.</p>
-		</details>
-		<details>
-			<summary>InputPilot does not appear under Input Monitoring.</summary>
-			<p>Some Macs do not populate that list automatically. Add it by hand: System Settings → Privacy &amp; Security → Input Monitoring → <span class="mono">+</span> → pick InputPilot in Applications, then switch it on.</p>
-		</details>
-		<details>
-			<summary>I granted permission but nothing happens.</summary>
-			<p>macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.</p>
-		</details>
-		<details>
-			<summary>Does it work with Bluetooth keyboards?</summary>
-			<p>Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting.</p>
-		</details>
-		<details>
-			<summary>What does it cost?</summary>
-			<p>Nothing. It is free and open source under the Apache 2.0 licence.</p>
-		</details>
-	</section>
+	<h1>The layout follows the keyboard.<span class="sub">Not the app. Not the window.</span></h1>
+	<p class="tagline">macOS switches input sources per app and per window — never per keyboard. InputPilot watches which keyboard produced the last key press and switches the input source to match. <strong>Map each keyboard once, then forget it exists.</strong></p>
 
-	<section id="download" style="text-align:center">
-		<h2>Stop fixing your layout by hand</h2>
-		<p class="section-lede" style="margin-inline:auto">macOS 13 or newer. Takes about a minute to set up.</p>
-		<div class="cta-row" style="justify-content:center">
-			<a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a>
-		</div>
-	</section>
+	<div class="cta">
+		<a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a>
+		<a class="btn alt" href="https://github.com/LucaGerlich/InputPilot#readme">Documentation</a>
+	</div>
+	<p class="ver">macOS 13+ · signed &amp; notarized · Apache-2.0 · <span id="ver">v1.0.1</span> · <code>brew install --cask lucagerlich/tap/inputpilot</code></p>
 </div>
 
 <div class="wrap">
-	<footer>
-		<div>
+
+<section id="what">
+	<h2>What it looks like when it works</h2>
+	<p class="lede">Nothing. You type on the other keyboard and the language is already right. The debug log is the only place it shows its work — useful when reporting a bug, and safe to share.</p>
+
+	<div class="panel">
+		<div class="panel-head">
+			Debug log <span class="tag">EXAMPLE</span>
+			<span class="r">menu bar → Open Debug</span>
+		</div>
+		<div class="log">
+			<div><span class="t">[10:24:03.112]</span> <span class="i">INFO</span> <span class="c">permission</span>&nbsp;&nbsp;&nbsp;&nbsp;Input Monitoring granted.</div>
+			<div><span class="t">[10:24:03.118]</span> <span class="i">INFO</span> <span class="c">hid-monitor</span>&nbsp;&nbsp;&nbsp;HID monitor started.</div>
+			<div><span class="t">[10:24:07.402]</span> <span class="i">INFO</span> <span class="c">active-device</span>&nbsp;Active device changed to Magic Keyboard (VID 1452, PID 640).</div>
+			<div><span class="t">[10:24:07.806]</span> <span class="ok">SWITCH</span> <span class="c">auto</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Magic Keyboard → German</div>
+			<div><span class="t">[10:31:15.220]</span> <span class="i">INFO</span> <span class="c">active-device</span>&nbsp;Active device changed to Keychron K2 (VID 13364, PID 630).</div>
+			<div><span class="t">[10:31:15.624]</span> <span class="ok">SWITCH</span> <span class="c">auto</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Keychron K2 → U.S.</div>
+			<div><span class="t">[10:47:02.918]</span> <span class="w">WARN</span> <span class="c">conflict</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mapped source no longer enabled: com.apple.keylayout.French</div>
+			<div><span class="t">[10:47:02.918]</span> <span class="i">INFO</span> <span class="c">active-device</span>&nbsp;<span class="blink">▋</span></div>
+		</div>
+	</div>
+
+	<div class="cards">
+		<div class="card">
+			<div class="card-head">Magic Keyboard</div>
+			<div class="row"><span>Vendor ID</span><span>1452</span></div>
+			<div class="row"><span>Product ID</span><span>640</span></div>
+			<div class="row"><span>Transport</span><span>USB</span></div>
+			<div class="row"><span>Layout</span><span class="i">German</span></div>
+			<div class="row"><span>Status</span><span class="ok">■ active</span></div>
+		</div>
+		<div class="card">
+			<div class="card-head">Keychron K2</div>
+			<div class="row"><span>Vendor ID</span><span>13364</span></div>
+			<div class="row"><span>Product ID</span><span>630</span></div>
+			<div class="row"><span>Transport</span><span>Bluetooth</span></div>
+			<div class="row"><span>Layout</span><span class="i">U.S.</span></div>
+			<div class="row"><span>Status</span><span>■ mapped</span></div>
+		</div>
+		<div class="card muted">
+			<div class="card-head">Built-in Keyboard</div>
+			<div class="row"><span>Vendor ID</span><span>1452</span></div>
+			<div class="row"><span>Product ID</span><span>834</span></div>
+			<div class="row"><span>Transport</span><span>Internal</span></div>
+			<div class="row"><span>Layout</span><span>global fallback</span></div>
+			<div class="row"><span>Status</span><span>■ unmapped</span></div>
+		</div>
+	</div>
+</section>
+
+<section id="how">
+	<h2>How it works</h2>
+	<p class="lede">Three steps, once.</p>
+	<div class="steps">
+		<div class="step">
+			<div class="n">01</div>
+			<h3>Press a key</h3>
+			<p>Type on each keyboard so InputPilot learns it. Devices are recognised again after unplugging, reconnecting, or moving to another port.</p>
+		</div>
+		<div class="step">
+			<div class="n">02</div>
+			<h3>Pick a layout</h3>
+			<p>Assign an input source per keyboard in Settings. Add per-device or global fallbacks for anything unmapped.</p>
+		</div>
+		<div class="step">
+			<div class="n">03</div>
+			<h3>Forget about it</h3>
+			<p>A 400 ms debounce and a 1.5 s cooldown keep it from flapping. Modifier-only presses are ignored, so ⌘-Tab never changes your layout.</p>
+		</div>
+	</div>
+</section>
+
+<section id="privacy">
+	<h2>About that permission</h2>
+	<p class="lede">InputPilot asks for Input Monitoring — the permission that lets an app see keyboard events. That is a lot to ask for, so here is exactly what it does with it.</p>
+	<div class="panel" style="padding:1.4rem 1.5rem">
+		<p style="margin:0"><b>It reads which keyboard sent a key press. It does not read the key.</b></p>
+		<ul class="checks">
+			<li>The HID callback takes two things from each event: <b>the device that sent it</b>, and <b>whether the key was a modifier</b>. Nothing else.</li>
+			<li>No key code, no character, no typed text exists anywhere in the app — not in memory, not on disk, not in the debug log.</li>
+			<li>The only network traffic is the update check. <b>No telemetry, no analytics, no crash reporter.</b></li>
+			<li>The source is public and the app is about 4,000 lines. The keyboard handling reads in a few minutes.</li>
+		</ul>
+		<p style="margin:1.1rem 0 0"><a href="https://github.com/LucaGerlich/InputPilot/blob/main/SECURITY.md">Full privacy statement →</a></p>
+	</div>
+</section>
+
+<section id="faq">
+	<h2>Questions</h2>
+	<div class="narrow">
+	<details><summary>Why is it not on the App Store?</summary>
+		<p>Sandboxed apps cannot read HID devices directly, and that is the only way to tell keyboards apart. So InputPilot ships outside the App Store, signed with a Developer ID certificate and notarized by Apple — it opens without warnings.</p></details>
+	<details><summary>InputPilot does not appear under Input Monitoring.</summary>
+		<p>Some Macs do not populate that list automatically. Add it by hand: System Settings → Privacy &amp; Security → Input Monitoring → <b>+</b> → pick InputPilot in Applications, then switch it on.</p></details>
+	<details><summary>I granted permission but nothing happens.</summary>
+		<p>macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.</p></details>
+	<details><summary>Does it work with Bluetooth keyboards?</summary>
+		<p>Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting.</p></details>
+	<details><summary>What does it cost?</summary>
+		<p>Nothing. Free and open source under the Apache 2.0 licence.</p></details>
+	</div>
+</section>
+
+<section id="get" style="text-align:center">
+	<h2 style="display:inline-block">Stop fixing your layout by hand</h2>
+	<p class="lede" style="margin-inline:auto">macOS 13 or newer. About a minute to set up.</p>
+	<div class="cta"><a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a></div>
+</section>
+
+</div>
+
+<footer>
+	<div class="wrap">
+		<span>© 2026 Luca Gerlich</span>
+		<span>Apache-2.0</span>
+		<span class="r">
 			<a href="https://github.com/LucaGerlich/InputPilot">GitHub</a>
 			<a href="https://github.com/LucaGerlich/InputPilot/releases">Releases</a>
 			<a href="https://github.com/LucaGerlich/InputPilot/blob/main/CHANGELOG.md">Changelog</a>
-			<a href="https://github.com/LucaGerlich/InputPilot/issues">Report an issue</a>
-		</div>
-		<div>© 2026 Luca Gerlich · Apache 2.0</div>
-	</footer>
-</div>
+			<a href="https://github.com/LucaGerlich/InputPilot/issues">Issues</a>
+		</span>
+	</div>
+</footer>
 
+<script>
+	// keep the version label honest without a build step
+	fetch("https://api.github.com/repos/LucaGerlich/InputPilot/releases/latest")
+		.then(r => r.ok ? r.json() : null)
+		.then(d => { if (d && d.tag_name) document.getElementById("ver").textContent = d.tag_name; })
+		.catch(() => {});
+</script>
 </body>
 </html>
