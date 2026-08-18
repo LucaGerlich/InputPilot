@@ -20,6 +20,7 @@ struct WelcomeView: View {
 				Text("InputPilot switches your input language automatically, based on which keyboard you are typing on.")
 					.multilineTextAlignment(.center)
 					.foregroundStyle(.secondary)
+					.fixedSize(horizontal: false, vertical: true)
 			}
 
 			VStack(alignment: .leading, spacing: 10) {
@@ -28,12 +29,14 @@ struct WelcomeView: View {
 				} icon: {
 					Image(systemName: "lock.shield")
 				}
+				.fixedSize(horizontal: false, vertical: true)
 
 				Label {
 					Text("InputPilot only detects **which keyboard** sent a key press — never what you type. Nothing leaves your Mac.")
 				} icon: {
 					Image(systemName: "hand.raised")
 				}
+				.fixedSize(horizontal: false, vertical: true)
 			}
 			.font(.callout)
 			.frame(maxWidth: .infinity, alignment: .leading)
@@ -65,7 +68,12 @@ struct WelcomeView: View {
 					.font(.caption)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)
+					.fixedSize(horizontal: false, vertical: true)
 			}
+			// Without a width cap the stack takes its widest child's ideal
+			// single-line width, and the window frame clips the caption
+			// instead of letting it wrap.
+			.frame(maxWidth: .infinity)
 		} else if appState.needsRelaunchAfterGrant {
 			VStack(spacing: 10) {
 				Label("Permission granted.", systemImage: "checkmark.circle.fill")
@@ -75,6 +83,7 @@ struct WelcomeView: View {
 					.font(.callout)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)
+					.fixedSize(horizontal: false, vertical: true)
 
 				Button("Quit InputPilot") {
 					NSApp.terminate(nil)
@@ -82,6 +91,7 @@ struct WelcomeView: View {
 				.keyboardShortcut(.defaultAction)
 				.controlSize(.large)
 			}
+			.frame(maxWidth: .infinity)
 		} else {
 			VStack(spacing: 10) {
 				Label("You're all set.", systemImage: "checkmark.circle.fill")
@@ -91,6 +101,7 @@ struct WelcomeView: View {
 					.font(.callout)
 					.foregroundStyle(.secondary)
 					.multilineTextAlignment(.center)
+					.fixedSize(horizontal: false, vertical: true)
 
 				Button("Done") {
 					dismiss()
@@ -98,6 +109,7 @@ struct WelcomeView: View {
 				.keyboardShortcut(.defaultAction)
 				.controlSize(.large)
 			}
+			.frame(maxWidth: .infinity)
 		}
 	}
 }
