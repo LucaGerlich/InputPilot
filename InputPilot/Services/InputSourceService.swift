@@ -6,7 +6,7 @@ import OSLog
 
 final class InputSourceService: InputSourceServicing {
 #if DEBUG
-    private let logger = Logger(subsystem: "InputPilot", category: "InputSourceService")
+    private let logger = Logger(subsystem: "com.lucagerlich.InputPilot", category: "InputSourceService")
 #endif
 
     func listEnabledInputSources() -> [InputSourceInfo] {

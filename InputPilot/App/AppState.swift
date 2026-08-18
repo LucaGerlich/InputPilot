@@ -46,7 +46,7 @@ final class AppState: ObservableObject {
     private var lastInputSourceRefreshAt = Date.distantPast
 
 #if DEBUG
-    private let logger = Logger(subsystem: "InputPilot", category: "AppState")
+    private let logger = Logger(subsystem: "com.lucagerlich.InputPilot", category: "AppState")
 #endif
 
     init(

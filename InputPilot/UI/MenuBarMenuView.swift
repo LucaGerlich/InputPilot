@@ -59,7 +59,9 @@ struct MenuBarMenuView: View {
                 )
                 .foregroundStyle(.orange)
 
-                SettingsLink {
+                Button {
+                    openWindow(id: "settings")
+                } label: {
                     Text("Fix in Settings...")
                 }
             }

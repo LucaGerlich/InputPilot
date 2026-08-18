@@ -14,7 +14,7 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
     private(set) var lastStartError: IOReturn?
 
 #if DEBUG
-    private let logger = Logger(subsystem: "InputPilot", category: "HIDKeyboardMonitor")
+    private let logger = Logger(subsystem: "com.lucagerlich.InputPilot", category: "HIDKeyboardMonitor")
 #endif
 
     @discardableResult
