@@ -49,6 +49,32 @@ if ! grep -q "SUPublicEDKey" Config/AppInfo.plist || grep -A1 "SUPublicEDKey" Co
 	echo "Sparkle updates will not validate until you run generate_keys and fill it in." >&2
 fi
 
+# The project file is the single source of truth for versions. Overriding
+# MARKETING_VERSION here instead would leave CURRENT_PROJECT_VERSION stale, and
+# Sparkle compares the build number - a release with an unchanged build number
+# is never offered as an update.
+echo "==> Checking versions"
+BUILD_SETTINGS="$(xcodebuild -project InputPilot.xcodeproj -target InputPilot -configuration Release -showBuildSettings 2>/dev/null)"
+PROJECT_VERSION="$(echo "$BUILD_SETTINGS" | awk -F' = ' '/ MARKETING_VERSION =/ {print $2; exit}' | tr -d ' ')"
+BUILD_NUMBER="$(echo "$BUILD_SETTINGS" | awk -F' = ' '/ CURRENT_PROJECT_VERSION =/ {print $2; exit}' | tr -d ' ')"
+
+if [[ "$PROJECT_VERSION" != "$VERSION" ]]; then
+	echo "ERROR: MARKETING_VERSION in the project is '$PROJECT_VERSION' but you asked to release '$VERSION'." >&2
+	echo "Update MARKETING_VERSION (and CURRENT_PROJECT_VERSION) in the project, commit, then re-run." >&2
+	exit 1
+fi
+
+if [[ -f appcast.xml ]]; then
+	PUBLISHED_BUILD="$(grep -o '<sparkle:version>[0-9]*' appcast.xml | grep -o '[0-9]*' | sort -n | tail -1)"
+	if [[ -n "$PUBLISHED_BUILD" && "$BUILD_NUMBER" -le "$PUBLISHED_BUILD" ]]; then
+		echo "ERROR: CURRENT_PROJECT_VERSION is $BUILD_NUMBER but the published appcast already advertises build $PUBLISHED_BUILD." >&2
+		echo "Sparkle compares build numbers, so this release would never be offered as an update. Bump CURRENT_PROJECT_VERSION." >&2
+		exit 1
+	fi
+fi
+
+echo "Releasing $VERSION (build $BUILD_NUMBER)"
+
 rm -rf "$DIST"
 mkdir -p "$DIST"
 
@@ -58,7 +84,6 @@ xcodebuild -project InputPilot.xcodeproj \
 	-configuration Release \
 	-destination 'generic/platform=macOS' \
 	-archivePath "$ARCHIVE" \
-	MARKETING_VERSION="$VERSION" \
 	archive
 
 echo "==> Exporting with Developer ID"
