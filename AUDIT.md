@@ -15,7 +15,7 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 ## Critical — blocks any public release
 
 - [ ] **C1 · No Developer ID certificate / notarization** — only "Apple Development" certs exist on this machine; every downloaded copy will be blocked by Gatekeeper. Needs paid Developer Program cert "Developer ID Application", then `notarytool submit` + `stapler staple`. *Effort: medium*
-- [ ] **C2 · No release pipeline** — no CI, no ExportOptions.plist, no DMG/zip packaging, no git tags. Add: archive → Developer ID export → notarize → staple → DMG → tagged GitHub Release. *Effort: large*
+- [x] **C2 · No release pipeline** — no CI, no ExportOptions.plist, no DMG/zip packaging, no git tags. Add: archive → Developer ID export → notarize → staple → DMG → tagged GitHub Release. *Effort: large*
 - [ ] **C3 · No LICENSE file** — public distribution is legally "all rights reserved". Add MIT/Apache-2.0 or explicit EULA + README section. *Effort: small*
 - [x] **C4 · Bundle ID `lucagerlich.InputPilot` is not reverse-DNS** (`project.pbxproj`) — must become e.g. `com.lucagerlich.InputPilot` **before** the first public build; changing later resets users' Input Monitoring TCC grant and UserDefaults. *Effort: small*
 - [x] **C5 · `MACOSX_DEPLOYMENT_TARGET = 15.7`** — excludes macOS 13, 14, and 15.0–15.6 users. MenuBarExtra needs only 13.0; verify API floor and lower. *Effort: medium*
@@ -24,7 +24,7 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 
 - [x] **H1 · Stale `currentInputSourceId` breaks switch decisions and Undo** — `AppState.swift:14,528-533,675-695`. No `kTISNotifySelectedKeyboardInputSourceChanged` observer; cache refreshes at most every 6 s. Manual source change → next keypress compares against stale value → switch wrongly suppressed, and Undo can record the wrong "previous" source. Fix: force-read `currentInputSourceId()` before evaluating, or observe the TIS distributed notification. *Effort: medium*
 - [x] **H2 · Silent decode failure wipes all mappings on next write** — `MappingStore.swift:119,141-164`. Undecodable stored data → `loadConfigurations()` returns `[:]` silently → next `setMapping` overwrites the blob, destroying every other device's config. Fix: log the failure, back up raw data to a `.corrupted` key, refuse blind overwrite. *Effort: small*
-- [ ] **H3 · No update mechanism** — direct-download users are stranded on v1.0 forever. Integrate Sparkle 2 (or minimum: in-app "check latest release" link). *Effort: medium*
+- [x] **H3 · No update mechanism** — direct-download users are stranded on v1.0 forever. Integrate Sparkle 2 (or minimum: in-app "check latest release" link). *Effort: medium*
 - [x] **H4 · Repo hygiene** — no `.gitignore`; `xcuserdata`/`UserInterfaceState.xcuserstate` tracked (leaks local usernames, perpetual dirty diffs); untracked `build/` + `.DS_Store`. Fix: add Swift/Xcode .gitignore, `git rm -r --cached` the user files. *Effort: small*
 - [x] **H5 · No shared Xcode scheme** — schemes live only in per-user xcuserdata; CI and other machines cannot run the documented `xcodebuild -scheme InputPilot` commands. Mark scheme Shared and commit it. *Effort: small*
 
@@ -45,7 +45,7 @@ Verification baseline: **build ✓ · all 30 tests pass ✓ · no third-party de
 - [x] **L1 · `unsafeBitCast` on TIS properties** — `InputSourceService.swift:91-97`. Empirically verified safe (200k iterations, retain count stable 3→3, no crash) but relies on unspecified behavior; switch to `Unmanaged.fromOpaque(raw).takeUnretainedValue()` for the documented contract. *Effort: small*
 - [x] **L2 · Force cast `$0 as! TISInputSource`** — dismissed: CF casts are unchecked at runtime (compiler: conditional cast "always succeeds"), so `as?` adds a warning and no safety. Documented with a comment instead.
 - [x] **L3 · Test infra nits** — `MockMappingStore.validateMappings` doesn't replicate real sort order; `waitForSleepRegistration` uses a magic 20-yield heuristic instead of a condition-driven wait. *Effort: small*
-- [ ] **L4 · No crash reporting** — optional; the existing privacy-first log export + a GitHub issue template asking for it is a reasonable substitute. *Effort: medium*
+- [x] **L4 · No crash reporting** — optional; the existing privacy-first log export + a GitHub issue template asking for it is a reasonable substitute. *Effort: medium*
 
 ## Verified good
 

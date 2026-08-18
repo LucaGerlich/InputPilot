@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MenuBarMenuView: View {
+    let updaterService: UpdaterService
+
     @EnvironmentObject private var appState: AppState
     @Environment(\.openWindow) private var openWindow
     private static let timeFormatter: DateFormatter = {
@@ -171,5 +173,11 @@ struct MenuBarMenuView: View {
             Label("Settings…", systemImage: "gearshape")
         }
         .keyboardShortcut(",", modifiers: .command)
+
+        Button {
+            updaterService.checkForUpdates()
+        } label: {
+            Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+        }
     }
 }

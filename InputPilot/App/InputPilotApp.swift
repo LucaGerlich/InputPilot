@@ -3,10 +3,11 @@ import SwiftUI
 @main
 struct InputPilotApp: App {
     @StateObject private var appState = AppState()
+    private let updaterService = UpdaterService()
 
     var body: some Scene {
         MenuBarExtra("InputPilot", systemImage: "keyboard") {
-            MenuBarMenuView()
+            MenuBarMenuView(updaterService: updaterService)
                 .environmentObject(appState)
         }
 

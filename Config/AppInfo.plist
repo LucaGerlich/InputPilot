@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSInputMonitoringUsageDescription</key>
+	<string>InputPilot detects which keyboard you are typing on to switch your input language automatically. It never reads or stores what you type.</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/LucaGerlich/InputPilot/main/appcast.xml</string>
+	<!-- Fill with the public key from Sparkle's generate_keys before the first release. -->
+	<key>SUPublicEDKey</key>
+	<string></string>
+	<!-- Keep automatic checks off until the appcast and EdDSA keys exist;
+	     users can still check manually from the menu bar. -->
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+</dict>
+</plist>
