@@ -11,8 +11,20 @@ If you keep a German external keyboard next to a US MacBook keyboard, you alread
 
 ## Install
 
+With [Homebrew](https://brew.sh):
+
+```bash
+brew tap LucaGerlich/tap
+brew install --cask inputpilot
+```
+
+Or manually:
+
 1. Download **`InputPilot-x.y.z.dmg`** from the [latest release](https://github.com/LucaGerlich/InputPilot/releases/latest).
 2. Open the DMG and drag InputPilot into Applications.
+
+Then, either way:
+
 3. Launch it. A keyboard icon appears in the menu bar — there is no Dock icon and no main window.
 4. A welcome window asks for **Input Monitoring**. Grant it, then quit and reopen InputPilot if macOS asks.
 5. Press a key on each keyboard you want to configure, then open **Settings** from the menu bar icon and pick an input source per keyboard.
