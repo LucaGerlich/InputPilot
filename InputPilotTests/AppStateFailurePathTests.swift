@@ -144,9 +144,21 @@ struct AppStateFailurePathTests {
             keyboardMonitor.startCallCount >= 5
         }
 
-        let monitorErrors = appState.debugLogEntries.filter { $0.category == "hid-monitor" && $0.level == .error }
+        func monitorErrors() -> [LogEntry] {
+            appState.debugLogEntries.filter { $0.category == "hid-monitor" && $0.level == .error }
+        }
         #expect(keyboardMonitor.startCallCount >= 5)
-        #expect(monitorErrors.count == 1)
+        #expect(monitorErrors().count == 1)
+
+        // A different failure is new information and must still be logged.
+        keyboardMonitor.lastStartErrorMessage = "HID monitor start failed with IOReturn -536870203."
+        await waitFor {
+            monitorErrors().count == 2
+        }
+        #expect(monitorErrors().map(\.message) == [
+            "No matching keyboard HID device available.",
+            "HID monitor start failed with IOReturn -536870203."
+        ])
     }
 
     @Test
