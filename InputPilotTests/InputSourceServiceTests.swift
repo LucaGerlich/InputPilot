@@ -18,6 +18,10 @@ struct InputSourceServiceTests {
         let enabledIds = Set(service.listEnabledInputSources().map(\.id))
         let allIds = Set(service.listAllInputSources().map(\.id))
 
+        // Every Mac has at least one keyboard layout enabled; an empty list
+        // would make the checks below pass for the wrong reason.
+        #expect(!enabledIds.isEmpty)
+        #expect(enabledIds.isSubset(of: allIds))
         #expect(enabledIds.isDisjoint(with: paletteSourceIds))
         #expect(allIds.isDisjoint(with: paletteSourceIds))
         #expect(paletteSourceIds.allSatisfy { !service.existsEnabledInputSource(id: $0) })

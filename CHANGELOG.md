@@ -8,7 +8,7 @@ All notable changes to InputPilot are documented here. This project follows [Sem
 
 - **Your own layout choices are respected.** A layout picked by hand — ⌃Space, the input menu, Undo, an input method's mode key — used to be reverted on the next key press. InputPilot now keeps it until you type on another keyboard. Settings → Switching offers three alternatives: keep it until you switch back yourself, switch back on the next key press (the old behaviour), or turn automatic switching off.
 - **Open at login.** Offered, pre-checked, at the end of the first run, and as a switch in Settings. Without it, InputPilot stopped working after every restart.
-- **A first run that ends somewhere.** The welcome window stays until its last step is done. After the grant macOS needs a fresh start, so the window offers **Relaunch InputPilot** instead of just quitting; after a denial its main button opens System Settings, since macOS only prompts once.
+- **A first run that ends somewhere.** The welcome window stays until its last step is done. After the grant macOS needs a fresh start, so the window offers **Relaunch InputPilot** instead of just quitting; after a denial its main button opens System Settings, since macOS only prompts once. Existing users see the welcome window once after updating, so they can turn on Open at login.
 - **"Use … for …" in the menu** maps the keyboard you are typing on to the current input source in one click.
 - **Check for updates automatically** can now be switched off in Settings.
 
@@ -20,7 +20,7 @@ All notable changes to InputPilot are documented here. This project follows [Sem
 
 ### Fixed
 
-- **Two keyboards of the same model** shared one mapping. Each now gets its own, and one of them can still change ports without becoming a third entry.
+- **Two USB keyboards of the same model** on different ports shared one mapping. Each now gets its own, and moving one of them to another port at a time keeps its mapping. Keyboards are told apart by port, so swapping two identical keyboards between ports swaps their mappings.
 - **Karabiner-Elements** holding a keyboard stopped keyboard detection outright, with advice to relaunch that could never help. InputPilot now keeps running instead of giving up, and explains how to release that keyboard in Karabiner-Elements.
 - Emoji & Symbols, Dictation and Press and Hold were offered as mapping targets; mapped, they opened a panel on every switch. Only keyboard input sources are offered now.
 - Windows opened from the menu could appear behind the active app, unreachable without a Dock icon. They now come to the front.

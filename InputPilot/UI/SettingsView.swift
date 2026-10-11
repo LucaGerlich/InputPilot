@@ -184,7 +184,7 @@ struct SettingsView: View {
         } header: {
             Text("Updates")
         } footer: {
-            Text("Asks GitHub about once a day whether a newer version exists. Nothing else is sent.")
+            Text("Asks GitHub about once a day whether a newer version exists. Nothing about your keyboards or typing is sent.")
         }
     }
 

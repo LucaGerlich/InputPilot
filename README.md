@@ -50,7 +50,7 @@ See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report 
 - **Undo** — revert the last automatic switch from the menu.
 - **Pause** — silence auto-switching for 15 minutes or an hour when it would get in the way.
 - **Conflict detection** — spots mappings that point at an input source you have since removed or disabled, and offers to fix them.
-- **Stable device identity** — keyboards are matched on vendor, product, transport and name, so unplugging and replugging (or moving to another USB port) keeps your mapping — and two keyboards of the same model each get their own.
+- **Stable device identity** — keyboards are matched on vendor, product, transport and name, so unplugging and replugging (or moving to another USB port) keeps your mapping — and two USB keyboards of the same model, on different ports, each get their own.
 - **No flapping** — a 400 ms debounce and a 1.5 s cooldown stop rapid switching, and a lone modifier press (⇧, ⌘, ⌥ or ⌃ on its own) is ignored by default. Any other key — including the Tab in ⌘-Tab — counts as typing on that keyboard.
 - **Debug log** — an in-app log window you can copy or export when reporting a bug. It contains device and status information only, never typed text.
 

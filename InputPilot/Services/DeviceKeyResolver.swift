@@ -87,7 +87,9 @@ enum DeviceKeyResolver {
         // recorded location no longer holds a keyboard of that model, that is
         // the keyboard that moved. If every recorded location is still occupied,
         // this is another keyboard of the same model and gets its own key.
-        // Only evaluated here, off the hot path of an already-known keyboard.
+        // Never reached for a keyboard at its known location. A keyboard that
+        // moved and folded into its old key comes here on every key press; the
+        // cost is a few HID property reads per attached keyboard.
         let connected = connectedDevices()
         let vacatedKeys = primaryMatches.filter { key in
             !connected.contains { device in
