@@ -36,3 +36,5 @@ One thing that will confuse you otherwise: an app launched from Xcode runs under
 ## Releases
 
 Releases are cut by the maintainer with `Scripts/release.sh`, which requires a Developer ID certificate, notarytool credentials, and the Sparkle signing key. Contributors do not need any of that.
+
+`appcast.xml` is signed. Since 1.1.0 the app rejects an appcast whose signature does not verify, so **never edit `appcast.xml` by hand** — not whitespace, not a merge-conflict resolution. Any change stops updates for every user. Pull requests that touch it will not be merged; only the release script writes it.
