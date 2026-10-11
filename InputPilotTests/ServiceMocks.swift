@@ -71,6 +71,9 @@ final class MockInputSourceService: InputSourceServicing {
     var allSources: [InputSourceInfo] = []
     var currentInputSourceIdValue: String?
     var selectInputSourceResult = true
+    /// False models TIS reporting success without the source actually
+    /// changing, a known macOS behaviour with some CJK input methods.
+    var selectTakesEffect = true
     private(set) var selectCalls: [String] = []
 
     func listEnabledInputSources() -> [InputSourceInfo] {
@@ -96,7 +99,7 @@ final class MockInputSourceService: InputSourceServicing {
     func selectInputSource(id: String) -> Bool {
         selectCalls.append(id)
 
-        if selectInputSourceResult {
+        if selectInputSourceResult, selectTakesEffect {
             currentInputSourceIdValue = id
         }
 
@@ -184,5 +187,33 @@ final class ImmediateClock: ClockProviding {
         let seconds = Double(components.seconds)
         let attoseconds = Double(components.attoseconds) / 1_000_000_000_000_000_000
         return seconds + attoseconds
+    }
+}
+
+/// Holds every `sleep` until the test releases it, so a test can act inside
+/// the debounce window - between a switch being scheduled and carried out.
+@MainActor
+final class GatedClock: ClockProviding {
+    var now = Date()
+    private var sleepers: [CheckedContinuation<Void, Never>] = []
+
+    var hasSleepers: Bool {
+        !sleepers.isEmpty
+    }
+
+    func sleep(for duration: Duration) async throws {
+        await withCheckedContinuation { continuation in
+            sleepers.append(continuation)
+        }
+    }
+
+    func releaseSleepers() {
+        let pending = sleepers
+        sleepers = []
+        pending.forEach { $0.resume() }
+    }
+
+    func advance(by seconds: TimeInterval) {
+        now = now.addingTimeInterval(seconds)
     }
 }
