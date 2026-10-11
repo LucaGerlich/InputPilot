@@ -35,7 +35,7 @@ struct SettingsView: View {
             } header: {
                 Text("Auto-Switch")
             } footer: {
-                Text("When \"Switch on modifier-only key presses\" is off, a lone Shift, Command, or Option press (for example during Cmd+Tab) does not change the input source — only regular typing does.")
+                Text("When \"Switch on modifier-only key presses\" is off, a lone Shift, Control, Option, or Command press does not change the input source. Any other key, including the Tab in Cmd+Tab, counts as typing on that keyboard.")
             }
 
             Section("Input Monitoring") {

@@ -32,7 +32,7 @@ struct WelcomeView: View {
 				.fixedSize(horizontal: false, vertical: true)
 
 				Label {
-					Text("InputPilot only detects **which keyboard** sent a key press — never what you type. Nothing leaves your Mac.")
+					Text("InputPilot only uses key presses to tell **which keyboard** you are typing on — it never records what you type. Nothing you type leaves your Mac; the only network traffic is a daily update check and any update you choose to install.")
 				} icon: {
 					Image(systemName: "hand.raised")
 				}

@@ -2,6 +2,14 @@
 
 All notable changes to InputPilot are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- A lone F6 press was treated as a modifier key and never triggered a switch. HID usage 0x3F is F6; it had been mistaken for Fn.
+- While the keyboard monitor could not start, the same error was added to the debug log every second until it crowded out everything else. Each distinct failure is now logged once.
+- Public claims made precisely true: the app reads a key's usage code only to detect modifiers; update checks run automatically once a day; and the Tab in ⌘-Tab counts as typing.
+
 ## [1.0.1] — 2026-08-18
 
 ### Fixed
@@ -24,9 +32,9 @@ First public release.
 - Undo for the last automatic switch, and pause for 15 or 60 minutes.
 - Conflict detection for mappings pointing at removed or disabled input sources.
 - Debounce (400 ms) and cooldown (1.5 s) to prevent flapping between keyboards.
-- Optional switching on modifier-only key presses, off by default, so ⌘-Tab does not change the layout.
+- Optional switching on modifier-only key presses, off by default, so a lone ⇧ or ⌘ press does not change the layout. Any other key — including the Tab in ⌘-Tab — counts as typing on that keyboard.
 - In-app debug log with copy and export, containing device and status information only.
-- Automatic updates via Sparkle, over a signed appcast.
+- Automatic updates via Sparkle; every update archive is EdDSA-signed and verified before install.
 
 ### Fixed
 

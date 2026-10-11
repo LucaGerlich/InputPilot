@@ -5,7 +5,7 @@
 Audited: 2026-08-18 · Scope: full repo · Method: 4 specialized reviews (correctness/concurrency, security/privacy, distribution, tests) + empirical verification
 Verification baseline at audit time: **build ✓ · all 30 tests pass ✓ · no third-party dependencies · security review clean (no keystroke logging, no network calls)**
 
-Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pass; Sparkle 2.9.6 was added deliberately as the update mechanism (finding H3) — its user-initiated update checks are now the app's only network activity. Finding texts below are preserved as written at audit time; checkboxes track resolution.
+Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pass; Sparkle 2.9.6 was added deliberately as the update mechanism (finding H3) — its update checks are now the app's only network activity. *(Correction, 2026-10-11: those checks are automatic, about once a day, as well as user-initiated.)* Finding texts below are preserved as written at audit time; checkboxes track resolution.
 
 ## Summary
 
@@ -20,7 +20,7 @@ Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pa
 
 ## Critical — blocks any public release
 
-- [x] **C1 · No Developer ID certificate / notarization** — resolved 2026-08-18: "Developer ID Application: Luca Gerlich (T5M4XW2T24)" installed, notarytool keychain profile `InputPilot` stored and validated, Sparkle EdDSA key pair generated (public key in `Config/AppInfo.plist`, private key in the release machine's Keychain). Signing config moved from team Q62GHM26RA to T5M4XW2T24 to match the certificate. Remaining: run `Scripts/release.sh 1.0.0` to produce the first notarized build. *Effort: medium*
+- [x] **C1 · No Developer ID certificate / notarization** — resolved 2026-08-18: "Developer ID Application: Luca Gerlich (T5M4XW2T24)" installed, notarytool keychain profile `InputPilot` stored and validated, Sparkle EdDSA key pair generated (public key in `Config/AppInfo.plist`, private key in the release machine's Keychain). Signing config moved from a work account's team to T5M4XW2T24 to match the certificate. Remaining: run `Scripts/release.sh 1.0.0` to produce the first notarized build. *Effort: medium*
 - [x] **C2 · No release pipeline** — no CI, no ExportOptions.plist, no DMG/zip packaging, no git tags. Add: archive → Developer ID export → notarize → staple → DMG → tagged GitHub Release. *Effort: large*
 - [x] **C3 · No LICENSE file** — public distribution is legally "all rights reserved". Add MIT/Apache-2.0 or explicit EULA + README section. *Effort: small*
 - [x] **C4 · Bundle ID `lucagerlich.InputPilot` is not reverse-DNS** (`project.pbxproj`) — must become e.g. `com.lucagerlich.InputPilot` **before** the first public build; changing later resets users' Input Monitoring TCC grant and UserDefaults. *Effort: small*

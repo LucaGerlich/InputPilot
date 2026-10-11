@@ -677,12 +677,14 @@ final class AppState: ObservableObject {
 
         guard didStart else {
             let failureMessage = hidKeyboardMonitor.lastStartErrorMessage ?? "HID monitor could not start although permission is granted."
+            // The permission poll retries every second; log each distinct
+            // failure once so it cannot crowd everything else out of the log.
             if lastMonitorStartFailure != failureMessage {
                 lastMonitorStartFailure = failureMessage
                 recordFailure(failureMessage)
+                debugLog(failureMessage)
+                logError(category: "hid-monitor", message: failureMessage)
             }
-            debugLog(failureMessage)
-            logError(category: "hid-monitor", message: failureMessage)
             return
         }
 
@@ -738,7 +740,7 @@ final class AppState: ObservableObject {
             )
         }
 
-        // A lone modifier press (Cmd+Tab, shortcut chords) still updates the
+        // A lone modifier press (e.g. the Cmd before a shortcut) still updates the
         // active-device display above, but only triggers a switch when the user
         // opted in. Settings-driven re-evaluations use .deviceStabilized and
         // are never gated here.

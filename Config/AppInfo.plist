@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSInputMonitoringUsageDescription</key>
-	<string>InputPilot detects which keyboard you are typing on to switch your input language automatically. It never reads or stores what you type.</string>
+	<string>InputPilot uses key presses only to tell which keyboard you are typing on and whether a modifier key was pressed, so it can switch your input language automatically. It never records, stores or sends what you type.</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/LucaGerlich/InputPilot/main/appcast.xml</string>
 	<!-- EdDSA public key; the matching private key lives in the release

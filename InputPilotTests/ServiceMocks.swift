@@ -32,10 +32,12 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
     var startResult = true
     var isRunning = false
     var lastStartErrorMessage: String?
+    private(set) var startCallCount = 0
 
     @discardableResult
     func start(onEvent: @escaping (ActiveKeyboardDevice, KeyboardEventKind) -> Void) -> Bool {
         self.onEvent = onEvent
+        startCallCount += 1
 
         if startResult {
             isRunning = true

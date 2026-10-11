@@ -30,7 +30,7 @@ struct AppStateFailurePathTests {
 
         #expect(!keyboardMonitor.isRunning)
         #expect(appState.status.permissionStatus == .denied)
-        #expect(appState.permissionWarningMessage != nil)
+        #expect(appState.permissionWarningMessage == "Input Monitoring permission is denied or was revoked.")
         #expect(appState.activeKeyboardDevice == nil)
         #expect(appState.status.activeKeyboard == "none")
     }
@@ -111,6 +111,54 @@ struct AppStateFailurePathTests {
         #expect(!keyboardMonitor.isRunning)
         #expect(appState.lastAutoSwitchError == "No matching keyboard HID device available.")
         #expect(appState.keyboardMonitorHint != nil)
+    }
+
+    @Test
+    func repeatedMonitorStartFailureIsLoggedOnce() async throws {
+        let suiteName = "AppStateFailurePathTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw FailurePathTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        keyboardMonitor.startResult = false
+        keyboardMonitor.lastStartErrorMessage = "No matching keyboard HID device available."
+
+        let appState = AppState(
+            permissionService: MockPermissionService(accessType: kIOHIDAccessTypeGranted),
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: MockInputSourceService(),
+            mappingStore: MockMappingStore(),
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock(),
+            permissionPollInterval: .milliseconds(10)
+        )
+
+        // The permission poll retries the start on every tick. The debug log
+        // that users attach to bug reports must not fill up with one line.
+        await waitFor {
+            keyboardMonitor.startCallCount >= 5
+        }
+
+        func monitorErrors() -> [LogEntry] {
+            appState.debugLogEntries.filter { $0.category == "hid-monitor" && $0.level == .error }
+        }
+        #expect(keyboardMonitor.startCallCount >= 5)
+        #expect(monitorErrors().count == 1)
+
+        // A different failure is new information and must still be logged.
+        keyboardMonitor.lastStartErrorMessage = "HID monitor start failed with IOReturn -536870203."
+        await waitFor {
+            monitorErrors().count == 2
+        }
+        #expect(monitorErrors().map(\.message) == [
+            "No matching keyboard HID device available.",
+            "HID monitor start failed with IOReturn -536870203."
+        ])
     }
 
     @Test
