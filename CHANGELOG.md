@@ -2,12 +2,30 @@
 
 All notable changes to InputPilot are documented here. This project follows [Semantic Versioning](https://semver.org).
 
-## [Unreleased]
+## [1.1.0] — 2026-10-11
+
+### Added
+
+- **Your own layout choices are respected.** A layout picked by hand — ⌃Space, the input menu, Undo, an input method's mode key — used to be reverted on the next key press. InputPilot now keeps it until you type on another keyboard. Settings → Switching offers three alternatives: keep it until you switch back yourself, switch back on the next key press (the old behaviour), or turn automatic switching off.
+- **Open at login.** Offered, pre-checked, at the end of the first run, and as a switch in Settings. Without it, InputPilot stopped working after every restart.
+- **A first run that ends somewhere.** The welcome window stays until its last step is done. After the grant macOS needs a fresh start, so the window offers **Relaunch InputPilot** instead of just quitting; after a denial its main button opens System Settings, since macOS only prompts once.
+- **"Use … for …" in the menu** maps the keyboard you are typing on to the current input source in one click.
+- **Check for updates automatically** can now be switched off in Settings.
+
+### Changed
+
+- The menu leads with what you are typing on and what it maps to. Hardware details and the debug log moved into a Diagnostics submenu, and Settings opens with your keyboards.
+- Status and device details use plain words ("Input Monitoring: not granted yet", "USB · Vendor 1452 · Product 832") instead of jargon.
+- The Settings "Pause" switch, which paused for a year, is now a plain "Automatic switching" switch. Pausing for 15 minutes or an hour stays in the menu.
 
 ### Fixed
 
+- **Two keyboards of the same model** shared one mapping. Each now gets its own, and one of them can still change ports without becoming a third entry.
+- **Karabiner-Elements** holding a keyboard stopped keyboard detection outright, with advice to relaunch that could never help. InputPilot now keeps running instead of giving up, and explains how to release that keyboard in Karabiner-Elements.
+- Emoji & Symbols, Dictation and Press and Hold were offered as mapping targets; mapped, they opened a panel on every switch. Only keyboard input sources are offered now.
+- Windows opened from the menu could appear behind the active app, unreachable without a Dock icon. They now come to the front.
 - A lone F6 press was treated as a modifier key and never triggered a switch. HID usage 0x3F is F6; it had been mistaken for Fn.
-- While the keyboard monitor could not start, the same error was added to the debug log every second until it crowded out everything else. Each distinct failure is now logged once.
+- While keyboard detection could not start, the same error was added to the debug log every second until it crowded out everything else. Each distinct failure is now logged once.
 - Public claims made precisely true: the app reads a key's usage code only to detect modifiers; update checks run automatically once a day; and the Tab in ⌘-Tab counts as typing.
 
 ## [1.0.1] — 2026-08-18

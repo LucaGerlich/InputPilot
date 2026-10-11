@@ -185,7 +185,7 @@
    "applicationSubCategory": "Keyboard layout switcher",
    "operatingSystem": "macOS",
    "softwareRequirements": "macOS 13.0 or later",
-   "softwareVersion": "1.0.1",
+   "softwareVersion": "1.1.0",
    "datePublished": "2026-08-18",
    "downloadUrl": "https://github.com/LucaGerlich/InputPilot/releases/latest",
    "releaseNotes": "https://github.com/LucaGerlich/InputPilot/blob/main/CHANGELOG.md",
@@ -198,6 +198,8 @@
     "Recognises keyboards again after unplugging, reconnecting or changing port",
     "Works with USB and Bluetooth keyboards",
     "Per-device and global fallback input sources",
+    "Keeps an input source you pick yourself until you switch keyboards, or as configured",
+    "Opens at login",
     "Debounce and cooldown prevent layout flapping",
     "Reads the source device and a modifier flag; the key's usage code is checked only to detect modifiers and is never stored, logged or transmitted",
     "No telemetry, no analytics, no crash reporting"
@@ -272,7 +274,7 @@
      "name": "I granted permission but nothing happens.",
      "acceptedAnswer": {
       "@type": "Answer",
-      "text": "macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again."
+      "text": "macOS applies Input Monitoring only to a fresh start. Click “Relaunch InputPilot” in the welcome window, or in Settings → Status."
      }
     },
     {
@@ -281,6 +283,30 @@
      "acceptedAnswer": {
       "@type": "Answer",
       "text": "Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it start at login?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes, if you let it. The last step of the first run offers “Open InputPilot at login”, already checked, and Settings has the same switch. It uses macOS’s own login items, so you can also manage it in System Settings → General → Login Items."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What happens when I change the layout myself?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "By default InputPilot keeps your choice until you type on another keyboard — handy for a word in another language. In Settings you can instead keep it until you switch back yourself, switch back on the next key press, or turn automatic switching off. A change made by macOS’s “Automatically switch to a document’s input source” counts as yours too."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it work with Karabiner-Elements?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Only for keyboards it leaves alone. For every keyboard whose events Karabiner-Elements modifies, it takes exclusive access and re-sends the keys from its own virtual keyboard, so InputPilot cannot see which physical keyboard you used. In Karabiner-Elements → Devices, turn off “Modify events” for each keyboard InputPilot should tell apart, then relaunch InputPilot."
      }
     },
     {
@@ -423,7 +449,7 @@
 		<a class="btn" href="https://github.com/LucaGerlich/InputPilot/releases/latest">Download for macOS</a>
 		<a class="btn alt" href="https://github.com/LucaGerlich/InputPilot#readme">Documentation</a>
 	</div>
-	<p class="ver">macOS 13+ · signed &amp; notarized · Apache-2.0 · <span id="ver">v1.0.1</span> · <code>brew install --cask lucagerlich/tap/inputpilot</code></p>
+	<p class="ver">macOS 13+ · signed &amp; notarized · Apache-2.0 · <span id="ver">v1.1.0</span> · <code>brew install --cask lucagerlich/tap/inputpilot</code></p>
 </div>
 
 <div class="wrap">
@@ -508,7 +534,7 @@
 			<li>The HID callback takes two things from each event: <b>the device that sent it</b>, and <b>whether the key was a modifier</b>. Nothing else.</li>
 			<li>The key's usage code is read only to decide whether it was a modifier, then discarded. It is never stored, logged or transmitted, and no character or text is ever derived from it.</li>
 			<li>The only network traffic is Sparkle's update check — automatically once a day, and when you ask — and the download of any update you accept. <b>No telemetry, no analytics, no crash reporter.</b></li>
-			<li>The source is public: about 3,200 lines of Swift, plus Sparkle, the open-source updater it ships with. The keyboard handling is 15 lines and reads in a minute.</li>
+			<li>The source is public: about 3,900 lines of Swift, plus Sparkle, the open-source updater it ships with. The keyboard handling is 15 lines and reads in a minute.</li>
 		</ul>
 		<p style="margin:1.1rem 0 0"><a href="https://github.com/LucaGerlich/InputPilot/blob/main/SECURITY.md">Full privacy statement →</a></p>
 	</div>
@@ -522,9 +548,15 @@
 	<details><summary>InputPilot does not appear under Input Monitoring.</summary>
 		<p>Some Macs do not populate that list automatically. Add it by hand: System Settings → Privacy &amp; Security → Input Monitoring → <b>+</b> → pick InputPilot in Applications, then switch it on.</p></details>
 	<details><summary>I granted permission but nothing happens.</summary>
-		<p>macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.</p></details>
+		<p>macOS applies Input Monitoring only to a fresh start. Click “Relaunch InputPilot” in the welcome window, or in Settings → Status.</p></details>
 	<details><summary>Does it work with Bluetooth keyboards?</summary>
 		<p>Yes. Keyboards are identified by vendor, product, transport and name, so a Bluetooth keyboard is recognised again after reconnecting.</p></details>
+	<details><summary>Does it start at login?</summary>
+		<p>Yes, if you let it. The last step of the first run offers “Open InputPilot at login”, already checked, and Settings has the same switch. It uses macOS’s own login items, so you can also manage it in System Settings → General → Login Items.</p></details>
+	<details><summary>What happens when I change the layout myself?</summary>
+		<p>By default InputPilot keeps your choice until you type on another keyboard — handy for a word in another language. In Settings you can instead keep it until you switch back yourself, switch back on the next key press, or turn automatic switching off. A change made by macOS’s “Automatically switch to a document’s input source” counts as yours too.</p></details>
+	<details><summary>Does it work with Karabiner-Elements?</summary>
+		<p>Only for keyboards it leaves alone. For every keyboard whose events Karabiner-Elements modifies, it takes exclusive access and re-sends the keys from its own virtual keyboard, so InputPilot cannot see which physical keyboard you used. In Karabiner-Elements → Devices, turn off “Modify events” for each keyboard InputPilot should tell apart, then relaunch InputPilot.</p></details>
 	<details><summary>I use a German external keyboard with a US MacBook. Does this fix it?</summary>
 		<p>That is the case it was written for. Map the external board to German and the built-in one to U.S. once. From then on the layout follows whichever one you type on. It switches about 0.4 seconds after you start typing on the other keyboard, so the first character or two can still land in the old layout — but there is no shortcut, no menu, nothing to remember.</p></details>
 	<details><summary>How is this different from Keychange, autokbisw, OctoKeys or Input Source Pro?</summary>
