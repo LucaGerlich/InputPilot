@@ -170,6 +170,56 @@ struct AppStateManualChangeTests {
     }
 
     @Test
+    func changingThePolicyDoesNotSwitchByItself() async throws {
+        let (defaults, suiteName) = try makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let clock = ImmediateClock()
+        let harness = makeHarness(defaults: defaults, clock: clock)
+
+        harness.monitor.emit(macBook)
+        await waitFor { harness.sources.selectCalls == [us] }
+        clock.advance(by: .seconds(2))
+        harness.sources.currentInputSourceIdValue = french
+        harness.monitor.emit(macBook)
+        await waitFor { harness.appState.manualHoldDescription != nil }
+
+        // Touching the picker must not undo the layout the user chose.
+        harness.appState.setManualChangePolicy(.keepUntilSwitchBack)
+        await settle()
+        #expect(harness.sources.selectCalls == [us])
+
+        // The new policy applies from the next key press on.
+        harness.appState.setManualChangePolicy(.revertOnNextKeyPress)
+        harness.monitor.emit(macBook)
+        await waitFor { harness.sources.selectCalls.count == 2 }
+        #expect(harness.sources.selectCalls == [us, us])
+    }
+
+    @Test
+    func aLoneModifierOnTheOtherKeyboardDoesNotEndTheHold() async throws {
+        let (defaults, suiteName) = try makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let clock = ImmediateClock()
+        let harness = makeHarness(defaults: defaults, clock: clock)
+
+        harness.monitor.emit(macBook)
+        await waitFor { harness.sources.selectCalls == [us] }
+        clock.advance(by: .seconds(2))
+        harness.sources.currentInputSourceIdValue = french
+        harness.monitor.emit(macBook)
+        await waitFor { harness.appState.manualHoldDescription != nil }
+
+        // Reaching for ⌘ on the other keyboard is not typing on it.
+        harness.monitor.emit(keychron, kind: .keyDown(isModifier: true))
+        await waitFor { harness.appState.activeKeyboardDevice == keychron }
+        harness.monitor.emit(macBook)
+        await settle()
+
+        #expect(harness.sources.selectCalls == [us])
+        #expect(harness.appState.manualHoldDescription != nil)
+    }
+
+    @Test
     func policyPersistsAcrossLaunches() throws {
         let (defaults, suiteName) = try makeDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }

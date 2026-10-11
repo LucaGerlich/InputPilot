@@ -30,6 +30,20 @@ struct LoginItemControllerTests {
     }
 
     @Test
+    func uncheckingAfterAFailedRegistrationClearsTheError() {
+        let service = MockLoginItemService()
+        service.registerError = LoginItemTestError.denied
+        let controller = LoginItemController(service: service)
+        controller.setEnabled(true)
+        #expect(controller.lastError != nil)
+
+        // Otherwise the welcome window's Done stays blocked by a stale error.
+        controller.setEnabled(false)
+
+        #expect(controller.lastError == nil)
+    }
+
+    @Test
     func pendingApprovalIsSurfaced() {
         let service = MockLoginItemService()
         service.statusAfterRegister = .requiresApproval

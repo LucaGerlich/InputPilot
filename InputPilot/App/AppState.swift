@@ -236,7 +236,9 @@ final class AppState: ObservableObject {
         // Paths and PIDs are passed as arguments, never spliced into the script.
         process.arguments = [
             "-c",
-            "while /bin/kill -0 \"$1\" 2>/dev/null; do /bin/sleep 0.1; done; /usr/bin/open \"$0\"",
+            // Waits at most 10 s for this process to exit, then lets Launch
+            // Services settle before opening the app again.
+            "i=0; while /bin/kill -0 \"$1\" 2>/dev/null && [ $i -lt 100 ]; do /bin/sleep 0.1; i=$((i+1)); done; /bin/sleep 0.3; /usr/bin/open \"$0\"",
             Bundle.main.bundlePath,
             String(ProcessInfo.processInfo.processIdentifier)
         ]
@@ -375,7 +377,11 @@ final class AppState: ObservableObject {
         manualChangePolicy = policy
         appSettingsStore.set(policy.rawValue, forKey: Self.manualChangePolicyDefaultsKey)
         recordAction("When you change the input source yourself: \(policy.title.lowercased()).")
-        reevaluateActiveDevice()
+        // Applies from the next key press. Re-evaluating here would switch away
+        // from the layout the user is holding the moment they touch the picker.
+        if manualHoldDescription != nil {
+            manualHoldDescription = nil
+        }
     }
 
     func pause(minutes: Int) {
@@ -736,6 +742,9 @@ final class AppState: ObservableObject {
         if activeKeyboardDevice != nil {
             activeKeyboardDevice = nil
         }
+        if manualHoldDescription != nil {
+            manualHoldDescription = nil
+        }
 
         if status.activeKeyboard != "none" {
             status.activeKeyboard = "none"
@@ -946,11 +955,11 @@ final class AppState: ObservableObject {
     /// Settings changes are deliberate: they end any manual hold and apply to
     /// the keyboard in use straight away.
     private func reevaluateActiveDevice() {
+        endManualHold(appliedSourceId: nil)
         guard let activeDeviceKey else {
             return
         }
 
-        endManualHold(appliedSourceId: nil)
         evaluateSwitch(for: activeDeviceKey, eventKind: .deviceStabilized)
     }
 

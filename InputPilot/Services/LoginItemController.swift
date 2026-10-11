@@ -61,6 +61,9 @@ final class LoginItemController: ObservableObject {
     }
 
     func setEnabled(_ enabled: Bool) {
+        // A new choice supersedes any earlier failure, even when it needs no
+        // work - otherwise a stale error keeps blocking the welcome window.
+        lastError = nil
         refresh()
         guard enabled != isEnabled else {
             return
@@ -72,7 +75,6 @@ final class LoginItemController: ObservableObject {
             } else {
                 try service.unregister()
             }
-            lastError = nil
         } catch {
             lastError = enabled
                 ? "Could not add InputPilot to your login items (\(error.localizedDescription)). You can add it in System Settings → General → Login Items."

@@ -91,7 +91,7 @@ struct MenuBarMenuView: View {
         if let keyboard = appState.activeKeyboardTitle {
             Text("Typing on \(keyboard) → \(appState.activeKeyboardTargetName ?? "not mapped")")
 
-            if let hold = appState.manualHoldDescription {
+            if appState.isAutoSwitchActive, let hold = appState.manualHoldDescription {
                 Text(hold)
             }
 
