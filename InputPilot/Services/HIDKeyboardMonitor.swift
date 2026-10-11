@@ -108,7 +108,7 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         let usage = IOHIDElementGetUsage(element)
 
         let device = IOHIDElementGetDevice(element)
-        onEvent?(makeActiveDevice(from: device), .keyDown(isModifier: isModifierUsage(usage)))
+        onEvent?(makeActiveDevice(from: device), .keyDown(isModifier: Self.isModifierUsage(usage)))
     }
 
     private func handleDeviceRemoval(_ device: IOHIDDevice) {
@@ -160,15 +160,12 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
             || normalizedTransport == "ps2"
     }
 
-    private func isModifierUsage(_ usage: UInt32) -> Bool {
+    static func isModifierUsage(_ usage: UInt32) -> Bool {
         let leftControl = UInt32(kHIDUsage_KeyboardLeftControl)
         let rightGUI = UInt32(kHIDUsage_KeyboardRightGUI)
-        if (leftControl...rightGUI).contains(usage) {
-            return true
-        }
-
-        // Fn is not consistently exposed; 0x3F is commonly used when present.
-        return usage == 0x3F
+        // 0x3F on this page is F6, not Fn: Fn/Globe arrives on Apple's vendor
+        // page and is already filtered out before this is called.
+        return (leftControl...rightGUI).contains(usage)
     }
 
     private static let inputValueCallback: IOHIDValueCallback = { context, _, _, value in
