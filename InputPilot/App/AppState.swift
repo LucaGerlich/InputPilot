@@ -51,7 +51,7 @@ final class AppState: ObservableObject {
     private let debugLogService: DebugLogServicing
     private let switchController: SwitchController
 
-    private var detectedDevicesByKey: [KeyboardDeviceKey: ActiveKeyboardDevice] = [:]
+    private(set) var detectedDevicesByKey: [KeyboardDeviceKey: ActiveKeyboardDevice] = [:]
     private var permissionRefreshTask: Task<Void, Never>?
     private var inputSourceChangeObserver: (any NSObjectProtocol)?
     private let permissionPollInterval: Duration
@@ -61,7 +61,7 @@ final class AppState: ObservableObject {
     /// means someone else chose it. Nil: nothing to compare against, so the
     /// next switch goes ahead.
     private var lastAppliedSourceId: String?
-    private var activeDeviceKey: KeyboardDeviceKey?
+    private(set) var activeDeviceKey: KeyboardDeviceKey?
     private var lastSwitchingDeviceKey: KeyboardDeviceKey?
 
 #if DEBUG
@@ -164,20 +164,8 @@ final class AppState: ObservableObject {
         }
     }
 
-    var permissionLine: String {
-        "Permission: \(status.permissionStatus.rawValue)"
-    }
-
-    var monitorLine: String {
-        "Monitor: \(hidKeyboardMonitor.isRunning ? "running" : "stopped")"
-    }
-
-    var activeKeyboardLine: String {
-        "Active device: \(status.activeKeyboard)"
-    }
-
-    var activeInputSourceLine: String {
-        "Current source: \(status.activeInputSource)"
+    var isKeyboardMonitorRunning: Bool {
+        hidKeyboardMonitor.isRunning
     }
 
     var isInputMonitoringGranted: Bool {
@@ -455,6 +443,17 @@ final class AppState: ObservableObject {
         recordAction("Undid last switch: \(lastAction.deviceDisplayName) -> \(previousSourceName).")
     }
 
+    /// "Use U.S. for Keychron K2" in the menu: map the keyboard in use to the
+    /// source selected right now, without opening Settings.
+    func useCurrentInputSourceForActiveDevice() {
+        guard let activeDeviceKey, let currentInputSourceId,
+              selectableInputSources.contains(where: { $0.id == currentInputSourceId }) else {
+            return
+        }
+
+        setMapping(for: activeDeviceKey, inputSourceId: currentInputSourceId)
+    }
+
     func mappedInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
         mappingStore.getMapping(for: deviceKey)
     }
@@ -550,54 +549,8 @@ final class AppState: ObservableObject {
         clearLastError()
     }
 
-    func deviceTitle(for deviceKey: KeyboardDeviceKey) -> String {
-        if let detectedDevice = detectedDevicesByKey[deviceKey] {
-            return detectedDevice.displayName
-        }
-
-        if let productName = deviceKey.productName, !productName.isEmpty {
-            return productName
-        }
-
-        if deviceKey.isBuiltIn {
-            return "Built-in keyboard"
-        }
-
-        return "Keyboard VID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.vendorId)), PID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.productId))"
-    }
-
-    func deviceSubtitle(for deviceKey: KeyboardDeviceKey) -> String {
-        var parts = [
-            "VID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.vendorId))",
-            "PID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.productId))"
-        ]
-
-        if let transport = deviceKey.transport, !transport.isEmpty {
-            parts.append(transport)
-        }
-
-        if deviceKey.isBuiltIn {
-            parts.append("Built-in")
-        }
-
-        let locationId = detectedDevicesByKey[deviceKey]?.locationId ?? deviceKey.locationId
-        if let locationId {
-            parts.append("Location \(locationId)")
-        }
-
-        return parts.joined(separator: " | ")
-    }
-
     func inputSourceName(for id: String) -> String {
         inputSourceDisplayName(for: id)
-    }
-
-    func mappingConflictSourceName(for conflict: MappingConflict) -> String {
-        inputSourceDisplayName(for: conflict.mappedSourceId)
-    }
-
-    func mappingConflictReasonText(for conflict: MappingConflict) -> String {
-        conflict.reason.rawValue
     }
 
     func openMappingFix(for deviceKey: KeyboardDeviceKey) {
@@ -751,7 +704,7 @@ final class AppState: ObservableObject {
         }
 
         guard didStart else {
-            let failureMessage = hidKeyboardMonitor.lastStartErrorMessage ?? "HID monitor could not start although permission is granted."
+            let failureMessage = hidKeyboardMonitor.lastStartErrorMessage ?? "Keyboard detection could not start although permission is granted."
             // The permission poll retries every second; log each distinct
             // failure once so it cannot crowd everything else out of the log.
             if lastMonitorStartFailure != failureMessage {
@@ -1018,7 +971,7 @@ final class AppState: ObservableObject {
             return "Built-in keyboard"
         }
 
-        return "VID \(KeyboardFingerprint.hardwareIdLabel(device.vendorId)), PID \(KeyboardFingerprint.hardwareIdLabel(device.productId))"
+        return "Keyboard (vendor \(KeyboardFingerprint.hardwareIdLabel(device.vendorId)), product \(KeyboardFingerprint.hardwareIdLabel(device.productId)))"
     }
 
     private func inputSourceDisplayName(for id: String) -> String {
@@ -1027,7 +980,7 @@ final class AppState: ObservableObject {
             ?? id
     }
 
-    private func resolvedTargetInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
+    func resolvedTargetInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
         if let mappedInputSourceId = resolvedConfiguredInputSourceId(
             for: deviceKey,
             sourceFor: mappingStore.getMapping(for:)

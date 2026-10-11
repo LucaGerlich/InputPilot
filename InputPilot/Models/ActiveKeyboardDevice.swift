@@ -48,6 +48,6 @@ struct ActiveKeyboardDevice: Equatable {
             return "Unknown keyboard"
         }
 
-        return "VID \(KeyboardFingerprint.hardwareIdLabel(vendorId)), PID \(KeyboardFingerprint.hardwareIdLabel(productId))"
+        return "Keyboard (vendor \(KeyboardFingerprint.hardwareIdLabel(vendorId)), product \(KeyboardFingerprint.hardwareIdLabel(productId)))"
     }
 }
