@@ -753,7 +753,7 @@ final class AppState: ObservableObject {
 
     private func registerDetectedDevice(_ device: ActiveKeyboardDevice) -> KeyboardDeviceKey {
         let observedDeviceKey = KeyboardDeviceKey(device: device)
-        let canonicalDeviceKey = canonicalDeviceKey(
+        let canonicalDeviceKey = DeviceKeyResolver.canonicalKey(
             for: observedDeviceKey,
             among: knownDeviceKeys
         )
@@ -870,18 +870,14 @@ final class AppState: ObservableObject {
     private func resolvedTargetInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
         if let mappedInputSourceId = resolvedConfiguredInputSourceId(
             for: deviceKey,
-            sourceResolver: { [mappingStore] candidateKey in
-                mappingStore.getMapping(for: candidateKey)
-            }
+            sourceFor: mappingStore.getMapping(for:)
         ) {
             return mappedInputSourceId
         }
 
         if let perDeviceFallbackInputSourceId = resolvedConfiguredInputSourceId(
             for: deviceKey,
-            sourceResolver: { [mappingStore] candidateKey in
-                mappingStore.getPerDeviceFallback(for: candidateKey)
-            }
+            sourceFor: mappingStore.getPerDeviceFallback(for:)
         ) {
             return perDeviceFallbackInputSourceId
         }
@@ -895,102 +891,26 @@ final class AppState: ObservableObject {
     }
 
     private func resolvedConfiguredInputSourceId(
-        for observedDeviceKey: KeyboardDeviceKey,
-        sourceResolver: (KeyboardDeviceKey) -> String?
+        for deviceKey: KeyboardDeviceKey,
+        sourceFor: (KeyboardDeviceKey) -> String?
     ) -> String? {
-        if let exactSourceId = sourceResolver(observedDeviceKey),
-           inputSourceService.existsEnabledInputSource(id: exactSourceId) {
-            return exactSourceId
-        }
-
-        let primaryCandidates = mappingStore
-            .allKnownDeviceKeys()
-            .filter { $0.matchesPrimary(of: observedDeviceKey.fingerprint) }
-            .filter { $0 != observedDeviceKey }
-
-        guard !primaryCandidates.isEmpty else {
-            return nil
-        }
-
-        let resolvedCandidates: [(key: KeyboardDeviceKey, sourceId: String)] = primaryCandidates.compactMap { candidateKey in
-            guard let sourceId = sourceResolver(candidateKey),
-                  inputSourceService.existsEnabledInputSource(id: sourceId) else {
-                return nil
-            }
-
-            return (key: candidateKey, sourceId: sourceId)
-        }
-
-        guard !resolvedCandidates.isEmpty else {
-            return nil
-        }
-
-        if resolvedCandidates.count == 1 {
-            return resolvedCandidates[0].sourceId
-        }
-
-        if let observedLocationId = observedDeviceKey.locationId,
-           let locationMatchedCandidate = resolvedCandidates.first(where: { $0.key.locationId == observedLocationId }) {
-            return locationMatchedCandidate.sourceId
-        }
-
-        if let locationAgnosticCandidate = resolvedCandidates.first(where: { $0.key.locationId == nil }) {
-            return locationAgnosticCandidate.sourceId
-        }
-
-        return resolvedCandidates
-            .sorted(by: { lhs, rhs in
-                lhs.key.id.localizedCaseInsensitiveCompare(rhs.key.id) == .orderedAscending
-            })
-            .first?
-            .sourceId
-    }
-
-    private func canonicalDeviceKey(
-        for observedDeviceKey: KeyboardDeviceKey,
-        among existingKeys: [KeyboardDeviceKey]
-    ) -> KeyboardDeviceKey {
-        let primaryMatches = existingKeys.filter { $0.matchesPrimary(of: observedDeviceKey.fingerprint) }
-
-        if let exactMatch = primaryMatches.first(where: { $0 == observedDeviceKey }) {
-            return exactMatch
-        }
-
-        if primaryMatches.count == 1, let existingPrimaryMatch = primaryMatches.first {
-            return existingPrimaryMatch
-        }
-
-        if let observedLocationId = observedDeviceKey.locationId,
-           let locationMatchedKey = primaryMatches.first(where: { $0.locationId == observedLocationId }) {
-            return locationMatchedKey
-        }
-
-        if let locationAgnosticKey = primaryMatches.first(where: { $0.locationId == nil }) {
-            return locationAgnosticKey
-        }
-
-        return observedDeviceKey
+        DeviceKeyResolver.configuredInputSourceId(
+            for: deviceKey,
+            knownKeys: mappingStore.allKnownDeviceKeys(),
+            sourceFor: sourceFor,
+            isEnabled: inputSourceService.existsEnabledInputSource(id:)
+        )
     }
 
     private func isCurrentActiveDeviceRepresented(
         by deviceKey: KeyboardDeviceKey,
         activeKeyboardDevice: ActiveKeyboardDevice
     ) -> Bool {
-        let activeDeviceKey = KeyboardDeviceKey(device: activeKeyboardDevice)
-        if activeDeviceKey == deviceKey {
-            return true
-        }
-
-        guard activeDeviceKey.matchesPrimary(of: deviceKey.fingerprint) else {
-            return false
-        }
-
-        let primaryMatches = knownDeviceKeys.filter { $0.matchesPrimary(of: activeDeviceKey.fingerprint) }
-        if primaryMatches.count <= 1 {
-            return true
-        }
-
-        return activeDeviceKey.locationId == deviceKey.locationId
+        DeviceKeyResolver.isActiveDevice(
+            KeyboardDeviceKey(device: activeKeyboardDevice),
+            representedBy: deviceKey,
+            knownKeys: knownDeviceKeys
+        )
     }
 
     private func refreshMappingConflicts(usingEnabledSources sources: [InputSourceInfo]) {
