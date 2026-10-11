@@ -14,6 +14,7 @@ final class AppState: ObservableObject {
     private static let pauseUntilDefaultsKey = "autoSwitchPauseUntil"
     private static let globalFallbackInputSourceIdDefaultsKey = "globalFallbackInputSourceId"
     private static let manualChangePolicyDefaultsKey = "manualChangePolicy"
+    private static let onboardingCompletedDefaultsKey = "onboardingCompleted"
     private static let inputSourcePollIntervalSeconds: TimeInterval = 6
 
     @Published private(set) var status = InputStatusSnapshot.placeholder
@@ -34,6 +35,7 @@ final class AppState: ObservableObject {
     @Published private(set) var manualHoldDescription: String?
     /// Why automatic switching is off, when InputPilot turned it off itself.
     @Published private(set) var autoSwitchOffReason: String?
+    @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var lastAction: SwitchAction?
     @Published private(set) var previousInputSourceIdBeforeLastSwitch: String?
     @Published private(set) var debugLogEntries: [LogEntry] = []
@@ -96,10 +98,15 @@ final class AppState: ObservableObject {
         self.pauseUntil = appSettingsStore.date(forKey: Self.pauseUntilDefaultsKey)
         self.manualChangePolicy = appSettingsStore.string(forKey: Self.manualChangePolicyDefaultsKey)
             .flatMap(ManualChangePolicy.init(rawValue:)) ?? .default
+        self.hasCompletedOnboarding = appSettingsStore.bool(forKey: Self.onboardingCompletedDefaultsKey)
         self.globalFallbackInputSourceId = Self.normalizedInputSourceId(
             appSettingsStore.string(forKey: Self.globalFallbackInputSourceIdDefaultsKey)
         )
         self.debugLogEntries = debugLogService.entries
+
+        // Decided once per process: a grant made while running only applies
+        // after a relaunch, so only a launch-time grant makes a partial open safe.
+        hidKeyboardMonitor.allowsPartialOpen = permissionService.isGranted
 
         seedKnownDevicesFromMappings()
         refreshPauseStateIfNeeded()
@@ -213,6 +220,49 @@ final class AppState: ObservableObject {
         isInputMonitoringGranted && !hidKeyboardMonitor.isRunning
     }
 
+    /// The welcome window stays until permission works and the user has seen
+    /// the last step, so a relaunch after the grant does not end in silence.
+    var needsOnboarding: Bool {
+        needsPermissionOnboarding || needsRelaunchAfterGrant || !hasCompletedOnboarding
+    }
+
+    /// Running, but without the keyboards another app holds exclusively.
+    var monitorHasPartialAccess: Bool {
+        hidKeyboardMonitor.isRunning && hidKeyboardMonitor.lastStartErrorMessage != nil
+    }
+
+    func completeOnboarding() {
+        guard !hasCompletedOnboarding else {
+            return
+        }
+
+        hasCompletedOnboarding = true
+        appSettingsStore.set(true, forKey: Self.onboardingCompletedDefaultsKey)
+    }
+
+    /// Starts a fresh copy once this process has exited, then quits: macOS
+    /// applies a new Input Monitoring grant only to a new process.
+    func relaunch() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // Paths and PIDs are passed as arguments, never spliced into the script.
+        process.arguments = [
+            "-c",
+            "while /bin/kill -0 \"$1\" 2>/dev/null; do /bin/sleep 0.1; done; /usr/bin/open \"$0\"",
+            Bundle.main.bundlePath,
+            String(ProcessInfo.processInfo.processIdentifier)
+        ]
+
+        do {
+            try process.run()
+        } catch {
+            recordFailure("Could not relaunch InputPilot (\(error.localizedDescription)). Quit it and open it again.")
+            return
+        }
+
+        NSApp.terminate(nil)
+    }
+
     var permissionWarningMessage: String {
         switch status.permissionStatus {
         case .denied:
@@ -232,10 +282,11 @@ final class AppState: ObservableObject {
             return "Keyboard monitor paused: Input Monitoring permission is required."
         }
 
+        if let monitorError = hidKeyboardMonitor.lastStartErrorMessage {
+            return monitorError
+        }
+
         if !hidKeyboardMonitor.isRunning {
-            if let monitorError = hidKeyboardMonitor.lastStartErrorMessage {
-                return monitorError
-            }
             return "Keyboard monitor is unavailable right now."
         }
 
@@ -714,6 +765,9 @@ final class AppState: ObservableObject {
 
         if !wasRunning && hidKeyboardMonitor.isRunning {
             logInfo(category: "hid-monitor", message: "HID monitor started.")
+            if let partialAccessMessage = hidKeyboardMonitor.lastStartErrorMessage {
+                logWarn(category: "hid-monitor", message: partialAccessMessage)
+            }
         }
 
         if let lastMonitorStartFailure, lastAutoSwitchError == lastMonitorStartFailure {

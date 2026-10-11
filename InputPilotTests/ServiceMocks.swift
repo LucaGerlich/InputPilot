@@ -5,6 +5,7 @@ import IOKit.hid
 @MainActor
 final class MockPermissionService: PermissionServicing {
     var accessType: IOHIDAccessType
+    private(set) var requestCount = 0
 
     init(accessType: IOHIDAccessType) {
         self.accessType = accessType
@@ -15,6 +16,7 @@ final class MockPermissionService: PermissionServicing {
     }
 
     func requestInputMonitoring() -> Bool {
+        requestCount += 1
         accessType = kIOHIDAccessTypeGranted
         return true
     }
@@ -30,6 +32,10 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
 
     var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)?
     var connected: [ActiveKeyboardDevice] = []
+    var allowsPartialOpen = false
+    /// Models IOHIDManagerOpen returning kIOReturnExclusiveAccess because
+    /// another app (Karabiner-Elements) holds one of the keyboards.
+    var exclusiveAccessMessage: String?
     var startResult = true
     var isRunning = false
     var lastStartErrorMessage: String?
@@ -39,6 +45,12 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
     func start(onEvent: @escaping (ActiveKeyboardDevice, KeyboardEventKind) -> Void) -> Bool {
         self.onEvent = onEvent
         startCallCount += 1
+
+        if let exclusiveAccessMessage {
+            lastStartErrorMessage = exclusiveAccessMessage
+            isRunning = allowsPartialOpen
+            return allowsPartialOpen
+        }
 
         if startResult {
             isRunning = true

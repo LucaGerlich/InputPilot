@@ -14,6 +14,7 @@ protocol HIDKeyboardMonitoring: AnyObject {
     var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)? { get set }
     /// Keyboards currently attached, as the running monitor sees them.
     func connectedDevices() -> [ActiveKeyboardDevice]
+    var allowsPartialOpen: Bool { get set }
     var isRunning: Bool { get }
     var lastStartErrorMessage: String? { get }
 }
