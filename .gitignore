@@ -19,6 +19,9 @@ xcuserdata/
 dist/
 *.dmg
 
+# Local Claude Code settings
+.claude/settings.local.json
+
 # Test artifacts
 .playwright-mcp/
 landing-*.png

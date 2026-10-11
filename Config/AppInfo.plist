@@ -11,6 +11,15 @@
 	     is invalid and makes Sparkle abort with a fatal updater error. -->
 	<key>SUPublicEDKey</key>
 	<string>pssjO3kU2/CHGn3oOa4atzbvmFbwind07K8GZIuqOpY=</string>
+	<!-- Updates are verified before extraction, and the appcast and release
+	     notes themselves must carry a valid EdDSA signature (Sparkle 2.9+), so
+	     push access to the repo alone cannot change what users are offered.
+	     From here on every appcast must be signed: release.sh does it, and
+	     appcast.xml must never be edited by hand. -->
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+	<key>SURequireSignedFeed</key>
+	<true/>
 	<!-- Set explicitly so Sparkle skips its first-launch permission dialog. -->
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
