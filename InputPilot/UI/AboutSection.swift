@@ -45,6 +45,7 @@ struct AboutSection: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 48, height: 48)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(appName)

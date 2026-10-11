@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct InputPilotApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var loginItem = LoginItemController()
     private let updaterService = UpdaterService()
 
     var body: some Scene {
@@ -17,6 +18,7 @@ struct InputPilotApp: App {
         Window("Welcome to InputPilot", id: "welcome") {
             WelcomeView()
                 .environmentObject(appState)
+                .environmentObject(loginItem)
         }
         .windowResizability(.contentSize)
 
@@ -27,8 +29,9 @@ struct InputPilotApp: App {
         .defaultSize(width: 600, height: 500)
 
         Window("Settings", id: "settings") {
-            SettingsView()
+            SettingsView(updaterService: updaterService)
                 .environmentObject(appState)
+                .environmentObject(loginItem)
         }
         .defaultSize(width: 600, height: 600)
         .keyboardShortcut(",", modifiers: .command)
@@ -43,8 +46,9 @@ private struct MenuBarLabel: View {
 
     var body: some View {
         Image(systemName: "keyboard")
+            .accessibilityLabel("InputPilot")
             .onAppear {
-                guard appState.needsPermissionOnboarding else {
+                guard appState.needsOnboarding else {
                     return
                 }
 
