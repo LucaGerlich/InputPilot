@@ -37,7 +37,7 @@ The app is signed with a Developer ID certificate and notarized by Apple, so it 
 
 To tell your keyboards apart, InputPilot has to see that *a* key was pressed and on *which* device. macOS puts that behind the Input Monitoring permission.
 
-It never reads what you type. The HID callback keeps exactly two things — the device that sent the event, and whether the key was a modifier. The key's usage code is read only to compute that second value and is then discarded: it is never stored, logged or transmitted, and no character or text is derived from it. Nothing is sent off your Mac: the only network traffic is the update check, and the only third-party dependency is the Sparkle updater.
+It never records what you type. The HID callback keeps exactly two things — the device that sent the event, and whether the key was a modifier. The key's usage code is read only to compute that second value and is then discarded: it is never stored, logged or transmitted, and no character or text is derived from it. Nothing you type is sent off your Mac: the only network traffic is Sparkle's update check (automatically once a day, or when you choose Check for Updates), and Sparkle is the only third-party dependency.
 
 See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report a vulnerability.
 
