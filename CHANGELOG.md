@@ -2,6 +2,14 @@
 
 All notable changes to InputPilot are documented here. This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- A lone F6 press was treated as a modifier key and never triggered a switch. HID usage 0x3F is F6; it had been mistaken for Fn.
+- While the keyboard monitor could not start, the same error was added to the debug log every second until it crowded out everything else. Each distinct failure is now logged once.
+- Public claims made precisely true: the app reads a key's usage code only to detect modifiers; update checks run automatically once a day; and the Tab in ⌘-Tab counts as typing.
+
 ## [1.0.1] — 2026-08-18
 
 ### Fixed
