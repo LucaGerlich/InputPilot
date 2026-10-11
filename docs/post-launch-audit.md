@@ -9,11 +9,11 @@ Previous audit: [pre-release-audit.md](pre-release-audit.md) (23 findings, all r
 
 ## Resolution status (2026-10-11)
 
-Fixed in three pull requests and shipped as **1.1.0**: [#13](https://github.com/LucaGerlich/InputPilot/pull/13) (public claims, log flood, F6), [#14](https://github.com/LucaGerlich/InputPilot/pull/14) (the 1.1.0 product work), and the release-hardening PR that adds this section. Ticked boxes below are resolved. Unit tests went from 35 to 69, all written test first.
+Fixed in three pull requests and shipped as **1.1.0**: [#13](https://github.com/LucaGerlich/InputPilot/pull/13) (public claims, log flood, F6), [#14](https://github.com/LucaGerlich/InputPilot/pull/14) (the 1.1.0 product work), and [#15](https://github.com/LucaGerlich/InputPilot/pull/15) (release hardening). **1.1.0 shipped on 2026-10-12**: [release](https://github.com/LucaGerlich/InputPilot/releases/tag/v1.1.0), signed appcast ([#16](https://github.com/LucaGerlich/InputPilot/pull/16)), Homebrew cask updated. Ticked boxes below are resolved. Unit tests went from 35 to 69, all written test first.
 
 - **Partly done:** T1's coverage target (logic is tested; SwiftUI views stay low by design). L9: the always-true assertion and the empty UI test are fixed, but the test host still boots the real app. L12: the team is asserted and the DMG identifier is fixed, but the notary log is not fetched. L14: AppState is 1,150 lines, still over the 800-line limit. L15: gitignore and entitlement are fixed; stale branches remain. M2: signed feed done; branch protection on `main` is pending Luca's go-ahead.
 - **Needs a human at the hardware:** P4 with Karabiner-Elements actually installed, and the per-policy check with two keyboards.
-- **Needs Luca (DNS, payment, accounts, his voice):** R1 launch, R2 Search Console and Bing, R3 AlternativeTo and the awesome-list PRs, R4 repo metadata, M12 Pages domain verification, L11 the cask's `uninstall quit:` (done at release time in the tap repo).
+- **Needs Luca (DNS, payment, accounts, his voice):** R1 launch, R2 Search Console and Bing, R3 AlternativeTo and the awesome-list PRs, R4 repo metadata, M12 Pages domain verification.
 - **Deferred on purpose:** L2 CJK activation (needs a repro), L3 refusing a blind overwrite, L4 the blocking permission request, L8 Swift 6 mode, L13 Sparkle 2.10, and before-keypress switching (it would need the Accessibility permission, a separate product decision).
 
 ## Summary
@@ -205,7 +205,7 @@ Neither big open-source Mac list ([open-source-mac-os-apps](https://github.com/s
   - `waitFor` helpers time out silently.
   - Untested: M2's "wrong device removed" case, same-device repeated keys in SwitchController (`:59-62`), and Settings persistence.
 - [x] **L10 · CI floats `macos-latest`** plus "newest Xcode", which will pick up a beta. `actions/checkout@v5` is tag-pinned and two majors behind. There's no `permissions:`, `concurrency:` or `timeout-minutes`, and no coverage gate.
-- [ ] **L11 · The cask has no `uninstall quit: "com.lucagerlich.InputPilot"`.** `brew uninstall` removes the bundle while the agent keeps running. *(Fix this in the tap repo.)*
+- [x] **L11 · The cask has no `uninstall quit: "com.lucagerlich.InputPilot"`.** `brew uninstall` removes the bundle while the agent keeps running. *(Fix this in the tap repo.)*
 - [ ] **L12 · `release.sh` diagnostics.**
   - A rejected notarization is only caught when stapling fails, and the notary log is never fetched.
   - The team (`T5M4XW2T24`) is never asserted after export.
