@@ -1,6 +1,7 @@
 import Testing
 @testable import InputPilot
 
+@MainActor
 struct DeviceKeyResolverTests {
     @Test
     func secondKeyboardOfSameModelGetsItsOwnKey() {

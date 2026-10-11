@@ -51,7 +51,10 @@ final class LoginItemController: ObservableObject {
     @Published private(set) var lastError: String?
     private let service: LoginItemServicing
 
-    init(service: LoginItemServicing = MainAppLoginItemService()) {
+    /// Nil means the app itself; a default argument would be built outside
+    /// the main actor.
+    init(service: LoginItemServicing? = nil) {
+        let service = service ?? MainAppLoginItemService()
         self.service = service
         self.status = service.status
     }

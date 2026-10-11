@@ -2,6 +2,7 @@ import Testing
 @testable import InputPilot
 
 /// Runs against the real Text Input Sources API of the machine under test.
+@MainActor
 struct InputSourceServiceTests {
     // Selectable, enabled on most Macs, but not keyboard layouts: mapping a
     // keyboard to one opened the emoji viewer or dictation on every switch.
