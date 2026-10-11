@@ -9,7 +9,9 @@ final class AppSettingsStore {
     }
 
     func bool(forKey key: String, default defaultValue: Bool = false) -> Bool {
-        defaults.object(forKey: key) as? Bool ?? defaultValue
+        // bool(forKey:) also reads "YES"/"NO" strings, as launch arguments
+        // such as `-onboardingCompleted NO` arrive.
+        defaults.object(forKey: key) == nil ? defaultValue : defaults.bool(forKey: key)
     }
 
     func set(_ value: Bool, forKey key: String) {

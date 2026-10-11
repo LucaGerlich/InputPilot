@@ -1,32 +1,24 @@
-//
-//  InputPilotUITestsLaunchTests.swift
-//  InputPilotUITests
-//
-//  Created by Luca on 09.02.26.
-//
-
 import XCTest
 
 final class InputPilotUITestsLaunchTests: XCTestCase {
-
-    override class var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
-    }
-
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
+    /// Regression test for 1.0.0, where a new user got no window at all and so
+    /// no way to grant Input Monitoring. With onboarding not yet completed the
+    /// welcome window must open by itself - whether or not this build already
+    /// has the permission (CI's ad-hoc build never does).
     @MainActor
-    func testLaunch() throws {
+    func testWelcomeWindowOpensOnFirstLaunch() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-onboardingCompleted", "NO"]
         app.launch()
 
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
+        XCTAssertTrue(app.windows["Welcome to InputPilot"].waitForExistence(timeout: 10))
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
+        attachment.name = "Welcome window"
         attachment.lifetime = .keepAlways
         add(attachment)
     }

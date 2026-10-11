@@ -13,6 +13,8 @@ final class AppState: ObservableObject {
     private static let switchOnModifierOnlyKeysDefaultsKey = "switchOnModifierOnlyKeys"
     private static let pauseUntilDefaultsKey = "autoSwitchPauseUntil"
     private static let globalFallbackInputSourceIdDefaultsKey = "globalFallbackInputSourceId"
+    private static let manualChangePolicyDefaultsKey = "manualChangePolicy"
+    private static let onboardingCompletedDefaultsKey = "onboardingCompleted"
     private static let inputSourcePollIntervalSeconds: TimeInterval = 6
 
     @Published private(set) var status = InputStatusSnapshot.placeholder
@@ -28,6 +30,12 @@ final class AppState: ObservableObject {
     @Published private(set) var autoSwitchEnabled: Bool
     @Published private(set) var switchOnModifierOnlyKeys: Bool
     @Published private(set) var pauseUntil: Date?
+    @Published private(set) var manualChangePolicy: ManualChangePolicy
+    /// Set while a manual input-source change is being respected, for the menu.
+    @Published private(set) var manualHoldDescription: String?
+    /// Why automatic switching is off, when InputPilot turned it off itself.
+    @Published private(set) var autoSwitchOffReason: String?
+    @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var lastAction: SwitchAction?
     @Published private(set) var previousInputSourceIdBeforeLastSwitch: String?
     @Published private(set) var debugLogEntries: [LogEntry] = []
@@ -43,12 +51,18 @@ final class AppState: ObservableObject {
     private let debugLogService: DebugLogServicing
     private let switchController: SwitchController
 
-    private var detectedDevicesByKey: [KeyboardDeviceKey: ActiveKeyboardDevice] = [:]
+    private(set) var detectedDevicesByKey: [KeyboardDeviceKey: ActiveKeyboardDevice] = [:]
     private var permissionRefreshTask: Task<Void, Never>?
     private var inputSourceChangeObserver: (any NSObjectProtocol)?
     private let permissionPollInterval: Duration
     private var lastMonitorStartFailure: String?
     private var lastInputSourceRefreshAt = Date.distantPast
+    /// The source InputPilot itself last applied. A different current source
+    /// means someone else chose it. Nil: nothing to compare against, so the
+    /// next switch goes ahead.
+    private var lastAppliedSourceId: String?
+    private(set) var activeDeviceKey: KeyboardDeviceKey?
+    private var lastSwitchingDeviceKey: KeyboardDeviceKey?
 
 #if DEBUG
     private let logger = Logger(subsystem: "com.lucagerlich.InputPilot", category: "AppState")
@@ -82,10 +96,17 @@ final class AppState: ObservableObject {
             default: false
         )
         self.pauseUntil = appSettingsStore.date(forKey: Self.pauseUntilDefaultsKey)
+        self.manualChangePolicy = appSettingsStore.string(forKey: Self.manualChangePolicyDefaultsKey)
+            .flatMap(ManualChangePolicy.init(rawValue:)) ?? .default
+        self.hasCompletedOnboarding = appSettingsStore.bool(forKey: Self.onboardingCompletedDefaultsKey)
         self.globalFallbackInputSourceId = Self.normalizedInputSourceId(
             appSettingsStore.string(forKey: Self.globalFallbackInputSourceIdDefaultsKey)
         )
         self.debugLogEntries = debugLogService.entries
+
+        // Decided once per process: a grant made while running only applies
+        // after a relaunch, so only a launch-time grant makes a partial open safe.
+        hidKeyboardMonitor.allowsPartialOpen = permissionService.isGranted
 
         seedKnownDevicesFromMappings()
         refreshPauseStateIfNeeded()
@@ -143,20 +164,8 @@ final class AppState: ObservableObject {
         }
     }
 
-    var permissionLine: String {
-        "Permission: \(status.permissionStatus.rawValue)"
-    }
-
-    var monitorLine: String {
-        "Monitor: \(hidKeyboardMonitor.isRunning ? "running" : "stopped")"
-    }
-
-    var activeKeyboardLine: String {
-        "Active device: \(status.activeKeyboard)"
-    }
-
-    var activeInputSourceLine: String {
-        "Current source: \(status.activeInputSource)"
+    var isKeyboardMonitorRunning: Bool {
+        hidKeyboardMonitor.isRunning
     }
 
     var isInputMonitoringGranted: Bool {
@@ -199,6 +208,51 @@ final class AppState: ObservableObject {
         isInputMonitoringGranted && !hidKeyboardMonitor.isRunning
     }
 
+    /// The welcome window stays until permission works and the user has seen
+    /// the last step, so a relaunch after the grant does not end in silence.
+    var needsOnboarding: Bool {
+        needsPermissionOnboarding || needsRelaunchAfterGrant || !hasCompletedOnboarding
+    }
+
+    /// Running, but without the keyboards another app holds exclusively.
+    var monitorHasPartialAccess: Bool {
+        hidKeyboardMonitor.isRunning && hidKeyboardMonitor.lastStartErrorMessage != nil
+    }
+
+    func completeOnboarding() {
+        guard !hasCompletedOnboarding else {
+            return
+        }
+
+        hasCompletedOnboarding = true
+        appSettingsStore.set(true, forKey: Self.onboardingCompletedDefaultsKey)
+    }
+
+    /// Starts a fresh copy once this process has exited, then quits: macOS
+    /// applies a new Input Monitoring grant only to a new process.
+    func relaunch() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // Paths and PIDs are passed as arguments, never spliced into the script.
+        process.arguments = [
+            "-c",
+            // Waits at most 10 s for this process to exit, then lets Launch
+            // Services settle before opening the app again.
+            "i=0; while /bin/kill -0 \"$1\" 2>/dev/null && [ $i -lt 100 ]; do /bin/sleep 0.1; i=$((i+1)); done; /bin/sleep 0.3; /usr/bin/open \"$0\"",
+            Bundle.main.bundlePath,
+            String(ProcessInfo.processInfo.processIdentifier)
+        ]
+
+        do {
+            try process.run()
+        } catch {
+            recordFailure("Could not relaunch InputPilot (\(error.localizedDescription)). Quit it and open it again.")
+            return
+        }
+
+        NSApp.terminate(nil)
+    }
+
     var permissionWarningMessage: String {
         switch status.permissionStatus {
         case .denied:
@@ -218,10 +272,11 @@ final class AppState: ObservableObject {
             return "Keyboard monitor paused: Input Monitoring permission is required."
         }
 
+        if let monitorError = hidKeyboardMonitor.lastStartErrorMessage {
+            return monitorError
+        }
+
         if !hidKeyboardMonitor.isRunning {
-            if let monitorError = hidKeyboardMonitor.lastStartErrorMessage {
-                return monitorError
-            }
             return "Keyboard monitor is unavailable right now."
         }
 
@@ -290,10 +345,11 @@ final class AppState: ObservableObject {
             return
         }
 
+        autoSwitchOffReason = nil
         recordAction("Auto-switch enabled.")
 
-        if isAutoSwitchActive, let activeKeyboardDevice {
-            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
+        if isAutoSwitchActive {
+            reevaluateActiveDevice()
         }
     }
 
@@ -308,8 +364,23 @@ final class AppState: ObservableObject {
             ? "Modifier-only keys now trigger switching."
             : "Modifier-only keys no longer trigger switching.")
 
-        if enabled, isAutoSwitchActive, let activeKeyboardDevice {
-            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
+        if enabled, isAutoSwitchActive {
+            reevaluateActiveDevice()
+        }
+    }
+
+    func setManualChangePolicy(_ policy: ManualChangePolicy) {
+        guard manualChangePolicy != policy else {
+            return
+        }
+
+        manualChangePolicy = policy
+        appSettingsStore.set(policy.rawValue, forKey: Self.manualChangePolicyDefaultsKey)
+        recordAction("When you change the input source yourself: \(policy.title.lowercased()).")
+        // Applies from the next key press. Re-evaluating here would switch away
+        // from the layout the user is holding the moment they touch the picker.
+        if manualHoldDescription != nil {
+            manualHoldDescription = nil
         }
     }
 
@@ -334,8 +405,8 @@ final class AppState: ObservableObject {
         appSettingsStore.set(Optional<Date>.none, forKey: Self.pauseUntilDefaultsKey)
         recordAction("Auto-switch resumed.")
 
-        if isAutoSwitchActive, let activeKeyboardDevice {
-            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
+        if isAutoSwitchActive {
+            reevaluateActiveDevice()
         }
     }
 
@@ -378,6 +449,17 @@ final class AppState: ObservableObject {
         recordAction("Undid last switch: \(lastAction.deviceDisplayName) -> \(previousSourceName).")
     }
 
+    /// "Use U.S. for Keychron K2" in the menu: map the keyboard in use to the
+    /// source selected right now, without opening Settings.
+    func useCurrentInputSourceForActiveDevice() {
+        guard let activeDeviceKey, let currentInputSourceId,
+              selectableInputSources.contains(where: { $0.id == currentInputSourceId }) else {
+            return
+        }
+
+        setMapping(for: activeDeviceKey, inputSourceId: currentInputSourceId)
+    }
+
     func mappedInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
         mappingStore.getMapping(for: deviceKey)
     }
@@ -401,9 +483,7 @@ final class AppState: ObservableObject {
             recordAction("Global fallback cleared.")
         }
 
-        if let activeKeyboardDevice {
-            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
-        }
+        reevaluateActiveDevice()
     }
 
     func useCurrentInputSourceAsGlobalFallback() {
@@ -436,7 +516,7 @@ final class AppState: ObservableObject {
 
         if let activeKeyboardDevice,
            isCurrentActiveDeviceRepresented(by: deviceKey, activeKeyboardDevice: activeKeyboardDevice) {
-            evaluateSwitch(for: deviceKey, eventKind: .deviceStabilized)
+            reevaluateActiveDevice()
         }
     }
 
@@ -458,7 +538,7 @@ final class AppState: ObservableObject {
 
         if let activeKeyboardDevice,
            isCurrentActiveDeviceRepresented(by: deviceKey, activeKeyboardDevice: activeKeyboardDevice) {
-            evaluateSwitch(for: deviceKey, eventKind: .deviceStabilized)
+            reevaluateActiveDevice()
         }
     }
 
@@ -475,54 +555,8 @@ final class AppState: ObservableObject {
         clearLastError()
     }
 
-    func deviceTitle(for deviceKey: KeyboardDeviceKey) -> String {
-        if let detectedDevice = detectedDevicesByKey[deviceKey] {
-            return detectedDevice.displayName
-        }
-
-        if let productName = deviceKey.productName, !productName.isEmpty {
-            return productName
-        }
-
-        if deviceKey.isBuiltIn {
-            return "Built-in keyboard"
-        }
-
-        return "Keyboard VID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.vendorId)), PID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.productId))"
-    }
-
-    func deviceSubtitle(for deviceKey: KeyboardDeviceKey) -> String {
-        var parts = [
-            "VID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.vendorId))",
-            "PID \(KeyboardFingerprint.hardwareIdLabel(deviceKey.productId))"
-        ]
-
-        if let transport = deviceKey.transport, !transport.isEmpty {
-            parts.append(transport)
-        }
-
-        if deviceKey.isBuiltIn {
-            parts.append("Built-in")
-        }
-
-        let locationId = detectedDevicesByKey[deviceKey]?.locationId ?? deviceKey.locationId
-        if let locationId {
-            parts.append("Location \(locationId)")
-        }
-
-        return parts.joined(separator: " | ")
-    }
-
     func inputSourceName(for id: String) -> String {
         inputSourceDisplayName(for: id)
-    }
-
-    func mappingConflictSourceName(for conflict: MappingConflict) -> String {
-        inputSourceDisplayName(for: conflict.mappedSourceId)
-    }
-
-    func mappingConflictReasonText(for conflict: MappingConflict) -> String {
-        conflict.reason.rawValue
     }
 
     func openMappingFix(for deviceKey: KeyboardDeviceKey) {
@@ -676,7 +710,7 @@ final class AppState: ObservableObject {
         }
 
         guard didStart else {
-            let failureMessage = hidKeyboardMonitor.lastStartErrorMessage ?? "HID monitor could not start although permission is granted."
+            let failureMessage = hidKeyboardMonitor.lastStartErrorMessage ?? "Keyboard detection could not start although permission is granted."
             // The permission poll retries every second; log each distinct
             // failure once so it cannot crowd everything else out of the log.
             if lastMonitorStartFailure != failureMessage {
@@ -690,6 +724,9 @@ final class AppState: ObservableObject {
 
         if !wasRunning && hidKeyboardMonitor.isRunning {
             logInfo(category: "hid-monitor", message: "HID monitor started.")
+            if let partialAccessMessage = hidKeyboardMonitor.lastStartErrorMessage {
+                logWarn(category: "hid-monitor", message: partialAccessMessage)
+            }
         }
 
         if let lastMonitorStartFailure, lastAutoSwitchError == lastMonitorStartFailure {
@@ -701,8 +738,12 @@ final class AppState: ObservableObject {
     private func clearActiveKeyboardDevice() {
         switchController.reset()
 
+        activeDeviceKey = nil
         if activeKeyboardDevice != nil {
             activeKeyboardDevice = nil
+        }
+        if manualHoldDescription != nil {
+            manualHoldDescription = nil
         }
 
         if status.activeKeyboard != "none" {
@@ -724,6 +765,7 @@ final class AppState: ObservableObject {
 
     private func handleDetectedKeyboard(_ detectedDevice: ActiveKeyboardDevice, eventKind: KeyboardEventKind) {
         let deviceKey = registerDetectedDevice(detectedDevice)
+        activeDeviceKey = deviceKey
         let hasChanged = activeKeyboardDevice != detectedDevice
 
         if hasChanged {
@@ -748,14 +790,27 @@ final class AppState: ObservableObject {
             return
         }
 
+        // Counted only past the modifier gate, so a lone ⌘ on the other
+        // keyboard does not count as switching keyboards.
+        if deviceKey != lastSwitchingDeviceKey {
+            if lastSwitchingDeviceKey != nil, manualChangePolicy == .keepUntilKeyboardChange {
+                // Re-arm from what is selected now rather than from nothing, so
+                // a ⌃Space pressed while this keyboard's switch is still pending
+                // counts as a manual change instead of being reverted.
+                endManualHold(appliedSourceId: inputSourceService.currentInputSourceId())
+            }
+            lastSwitchingDeviceKey = deviceKey
+        }
+
         evaluateSwitch(for: deviceKey, eventKind: eventKind)
     }
 
     private func registerDetectedDevice(_ device: ActiveKeyboardDevice) -> KeyboardDeviceKey {
         let observedDeviceKey = KeyboardDeviceKey(device: device)
-        let canonicalDeviceKey = canonicalDeviceKey(
+        let canonicalDeviceKey = DeviceKeyResolver.canonicalKey(
             for: observedDeviceKey,
-            among: knownDeviceKeys
+            among: knownDeviceKeys,
+            connectedDevices: { [hidKeyboardMonitor] in hidKeyboardMonitor.connectedDevices() }
         )
         detectedDevicesByKey[canonicalDeviceKey] = device
 
@@ -769,12 +824,19 @@ final class AppState: ObservableObject {
 
     private func evaluateSwitch(for deviceKey: KeyboardDeviceKey, eventKind: KeyboardEventKind) {
         let targetInputSourceId = resolvedTargetInputSourceId(for: deviceKey)
+        // Read fresh: the cached value goes stale when the user changes the
+        // source outside the app (menu bar, shortcuts) between polls.
+        let currentSourceId = inputSourceService.currentInputSourceId()
+
+        // Already on this keyboard's source, whoever selected it: nothing is
+        // being held against the user any more.
+        if let targetInputSourceId, currentSourceId == targetInputSourceId {
+            endManualHold(appliedSourceId: currentSourceId)
+        }
 
         switchController.evaluateSwitch(
             device: deviceKey,
-            // Read fresh: the cached value goes stale when the user changes the
-            // source outside the app (menu bar, shortcuts) between polls.
-            currentSource: inputSourceService.currentInputSourceId(),
+            currentSource: currentSourceId,
             mapping: targetInputSourceId,
             isAutoSwitchActive: isAutoSwitchActive,
             eventKind: eventKind
@@ -817,6 +879,11 @@ final class AppState: ObservableObject {
             return false
         }
 
+        if let lastAppliedSourceId, freshCurrentInputSourceId != lastAppliedSourceId,
+           !shouldOverrideManualChange(to: freshCurrentInputSourceId) {
+            return false
+        }
+
         let previousInputSourceId = freshCurrentInputSourceId
         let targetSourceName = inputSourceDisplayName(for: targetInputSourceId)
         let deviceName = deviceTitle(for: deviceKey)
@@ -828,6 +895,10 @@ final class AppState: ObservableObject {
         }
 
         refreshInputSourceState()
+        // Only a switch that took effect becomes the baseline. One that did not
+        // (seen with some CJK input methods) must be retried on the next key,
+        // not mistaken for the user picking the old source.
+        endManualHold(appliedSourceId: currentInputSourceId == targetInputSourceId ? targetInputSourceId : nil)
         previousInputSourceIdBeforeLastSwitch = previousInputSourceId
         lastAction = SwitchAction(
             timestamp: clock.now,
@@ -839,6 +910,57 @@ final class AppState: ObservableObject {
         clearLastError()
         recordAction("Auto-switched \(deviceName) -> \(targetSourceName).")
         return true
+    }
+
+    /// The input source changed since InputPilot last set it, so someone else
+    /// chose it. Applies the user's policy; returns whether to switch anyway.
+    private func shouldOverrideManualChange(to manualSourceId: String?) -> Bool {
+        let sourceName = manualSourceId.map(inputSourceDisplayName(for:)) ?? "your choice"
+
+        switch manualChangePolicy {
+        case .revertOnNextKeyPress:
+            return true
+        case .keepUntilKeyboardChange:
+            beginManualHold("Keeping \(sourceName) until you switch keyboards.")
+            return false
+        case .keepUntilSwitchBack:
+            beginManualHold("Keeping \(sourceName) until you switch back yourself.")
+            return false
+        case .turnOffAutoSwitch:
+            setAutoSwitchEnabled(false)
+            autoSwitchOffReason = "Turned off because you changed the input source to \(sourceName) yourself."
+            logInfo(category: "manual-change", message: "Auto-switch turned off after a manual change to \(sourceName).")
+            return false
+        }
+    }
+
+    /// Logs once per hold: every key press during a hold lands here again.
+    private func beginManualHold(_ description: String) {
+        guard manualHoldDescription != description else {
+            return
+        }
+
+        manualHoldDescription = description
+        recordAction(description)
+        logInfo(category: "manual-change", message: description)
+    }
+
+    private func endManualHold(appliedSourceId: String?) {
+        lastAppliedSourceId = appliedSourceId
+        if manualHoldDescription != nil {
+            manualHoldDescription = nil
+        }
+    }
+
+    /// Settings changes are deliberate: they end any manual hold and apply to
+    /// the keyboard in use straight away.
+    private func reevaluateActiveDevice() {
+        endManualHold(appliedSourceId: nil)
+        guard let activeDeviceKey else {
+            return
+        }
+
+        evaluateSwitch(for: activeDeviceKey, eventKind: .deviceStabilized)
     }
 
     private func sortKnownDevices() {
@@ -858,7 +980,7 @@ final class AppState: ObservableObject {
             return "Built-in keyboard"
         }
 
-        return "VID \(KeyboardFingerprint.hardwareIdLabel(device.vendorId)), PID \(KeyboardFingerprint.hardwareIdLabel(device.productId))"
+        return "Keyboard (vendor \(KeyboardFingerprint.hardwareIdLabel(device.vendorId)), product \(KeyboardFingerprint.hardwareIdLabel(device.productId)))"
     }
 
     private func inputSourceDisplayName(for id: String) -> String {
@@ -867,21 +989,17 @@ final class AppState: ObservableObject {
             ?? id
     }
 
-    private func resolvedTargetInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
+    func resolvedTargetInputSourceId(for deviceKey: KeyboardDeviceKey) -> String? {
         if let mappedInputSourceId = resolvedConfiguredInputSourceId(
             for: deviceKey,
-            sourceResolver: { [mappingStore] candidateKey in
-                mappingStore.getMapping(for: candidateKey)
-            }
+            sourceFor: mappingStore.getMapping(for:)
         ) {
             return mappedInputSourceId
         }
 
         if let perDeviceFallbackInputSourceId = resolvedConfiguredInputSourceId(
             for: deviceKey,
-            sourceResolver: { [mappingStore] candidateKey in
-                mappingStore.getPerDeviceFallback(for: candidateKey)
-            }
+            sourceFor: mappingStore.getPerDeviceFallback(for:)
         ) {
             return perDeviceFallbackInputSourceId
         }
@@ -895,102 +1013,26 @@ final class AppState: ObservableObject {
     }
 
     private func resolvedConfiguredInputSourceId(
-        for observedDeviceKey: KeyboardDeviceKey,
-        sourceResolver: (KeyboardDeviceKey) -> String?
+        for deviceKey: KeyboardDeviceKey,
+        sourceFor: (KeyboardDeviceKey) -> String?
     ) -> String? {
-        if let exactSourceId = sourceResolver(observedDeviceKey),
-           inputSourceService.existsEnabledInputSource(id: exactSourceId) {
-            return exactSourceId
-        }
-
-        let primaryCandidates = mappingStore
-            .allKnownDeviceKeys()
-            .filter { $0.matchesPrimary(of: observedDeviceKey.fingerprint) }
-            .filter { $0 != observedDeviceKey }
-
-        guard !primaryCandidates.isEmpty else {
-            return nil
-        }
-
-        let resolvedCandidates: [(key: KeyboardDeviceKey, sourceId: String)] = primaryCandidates.compactMap { candidateKey in
-            guard let sourceId = sourceResolver(candidateKey),
-                  inputSourceService.existsEnabledInputSource(id: sourceId) else {
-                return nil
-            }
-
-            return (key: candidateKey, sourceId: sourceId)
-        }
-
-        guard !resolvedCandidates.isEmpty else {
-            return nil
-        }
-
-        if resolvedCandidates.count == 1 {
-            return resolvedCandidates[0].sourceId
-        }
-
-        if let observedLocationId = observedDeviceKey.locationId,
-           let locationMatchedCandidate = resolvedCandidates.first(where: { $0.key.locationId == observedLocationId }) {
-            return locationMatchedCandidate.sourceId
-        }
-
-        if let locationAgnosticCandidate = resolvedCandidates.first(where: { $0.key.locationId == nil }) {
-            return locationAgnosticCandidate.sourceId
-        }
-
-        return resolvedCandidates
-            .sorted(by: { lhs, rhs in
-                lhs.key.id.localizedCaseInsensitiveCompare(rhs.key.id) == .orderedAscending
-            })
-            .first?
-            .sourceId
-    }
-
-    private func canonicalDeviceKey(
-        for observedDeviceKey: KeyboardDeviceKey,
-        among existingKeys: [KeyboardDeviceKey]
-    ) -> KeyboardDeviceKey {
-        let primaryMatches = existingKeys.filter { $0.matchesPrimary(of: observedDeviceKey.fingerprint) }
-
-        if let exactMatch = primaryMatches.first(where: { $0 == observedDeviceKey }) {
-            return exactMatch
-        }
-
-        if primaryMatches.count == 1, let existingPrimaryMatch = primaryMatches.first {
-            return existingPrimaryMatch
-        }
-
-        if let observedLocationId = observedDeviceKey.locationId,
-           let locationMatchedKey = primaryMatches.first(where: { $0.locationId == observedLocationId }) {
-            return locationMatchedKey
-        }
-
-        if let locationAgnosticKey = primaryMatches.first(where: { $0.locationId == nil }) {
-            return locationAgnosticKey
-        }
-
-        return observedDeviceKey
+        DeviceKeyResolver.configuredInputSourceId(
+            for: deviceKey,
+            knownKeys: mappingStore.allKnownDeviceKeys(),
+            sourceFor: sourceFor,
+            isEnabled: inputSourceService.existsEnabledInputSource(id:)
+        )
     }
 
     private func isCurrentActiveDeviceRepresented(
         by deviceKey: KeyboardDeviceKey,
         activeKeyboardDevice: ActiveKeyboardDevice
     ) -> Bool {
-        let activeDeviceKey = KeyboardDeviceKey(device: activeKeyboardDevice)
-        if activeDeviceKey == deviceKey {
-            return true
-        }
-
-        guard activeDeviceKey.matchesPrimary(of: deviceKey.fingerprint) else {
-            return false
-        }
-
-        let primaryMatches = knownDeviceKeys.filter { $0.matchesPrimary(of: activeDeviceKey.fingerprint) }
-        if primaryMatches.count <= 1 {
-            return true
-        }
-
-        return activeDeviceKey.locationId == deviceKey.locationId
+        DeviceKeyResolver.isActiveDevice(
+            KeyboardDeviceKey(device: activeKeyboardDevice),
+            representedBy: deviceKey,
+            knownKeys: knownDeviceKeys
+        )
     }
 
     private func refreshMappingConflicts(usingEnabledSources sources: [InputSourceInfo]) {
@@ -1085,8 +1127,8 @@ final class AppState: ObservableObject {
         appSettingsStore.set(Optional<Date>.none, forKey: Self.pauseUntilDefaultsKey)
         recordAction("Pause expired. Auto-switch active.")
 
-        if isAutoSwitchActive, let activeKeyboardDevice {
-            evaluateSwitch(for: KeyboardDeviceKey(device: activeKeyboardDevice), eventKind: .deviceStabilized)
+        if isAutoSwitchActive {
+            reevaluateActiveDevice()
         }
     }
 

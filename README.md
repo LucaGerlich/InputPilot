@@ -43,12 +43,14 @@ See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report 
 
 ## Features
 
-- **Per-keyboard input sources** — map each keyboard to the layout you want.
+- **Per-keyboard input sources** — map each keyboard to the layout you want, from Settings or with one click on "Use … for …" in the menu.
+- **Respects your own choices** — pick a layout by hand (⌃Space, the input menu, Undo) and InputPilot keeps it until you switch keyboards. Settings offers three alternatives: keep it until you switch back yourself, switch back on the next key press, or turn automatic switching off.
+- **Opens at login** — offered, pre-checked, at the end of the first run, and in Settings.
 - **Fallbacks** — a per-device fallback for when a mapping breaks, and a global fallback for unmapped keyboards.
 - **Undo** — revert the last automatic switch from the menu.
-- **Pause** — silence auto-switching for 15 or 60 minutes when it would get in the way.
+- **Pause** — silence auto-switching for 15 minutes or an hour when it would get in the way.
 - **Conflict detection** — spots mappings that point at an input source you have since removed or disabled, and offers to fix them.
-- **Stable device identity** — keyboards are matched on vendor, product, transport and name, so unplugging and replugging (or moving to another USB port) keeps your mapping.
+- **Stable device identity** — keyboards are matched on vendor, product, transport and name, so unplugging and replugging (or moving to another USB port) keeps your mapping — and two USB keyboards of the same model, on different ports, each get their own.
 - **No flapping** — a 400 ms debounce and a 1.5 s cooldown stop rapid switching, and a lone modifier press (⇧, ⌘, ⌥ or ⌃ on its own) is ignored by default. Any other key — including the Tab in ⌘-Tab — counts as typing on that keyboard.
 - **Debug log** — an in-app log window you can copy or export when reporting a bug. It contains device and status information only, never typed text.
 
@@ -57,6 +59,7 @@ See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report 
 1. A HID callback reports which keyboard produced the latest key press.
 2. InputPilot resolves the target input source for that device, in order: **device mapping → per-device fallback → global fallback**. If none apply, it does nothing.
 3. After the debounce settles, it switches the input source through the Text Input Sources (TIS) API.
+4. It remembers the source it applied. If the current source differs at the next switch, someone else chose it, and your manual-change setting decides what happens.
 
 Auto-switching only runs when it is enabled and not paused.
 
@@ -64,18 +67,22 @@ Auto-switching only runs when it is enabled and not paused.
 
 | Section | What it does |
 |---|---|
-| Auto-Switch | Pause state, modifier-only opt-in, last action, last error |
-| Input Monitoring | Permission status and the currently active keyboard |
-| Input Sources | The current input source and its identifier |
-| Fallbacks | Global fallback, plus a shortcut to adopt the current source |
-| Conflicts | Mappings pointing at missing or disabled sources, with a fix action |
-| Keyboard Device Mappings | Per-keyboard input source, per-device fallback, forget device |
+| Needs Attention | Only shown when a mapping points at a removed or disabled source, with a fix action |
+| Keyboards | Per-keyboard input source, per-keyboard fallback, forget a keyboard |
+| Switching | Automatic switching on/off, Open at login, what happens when you change the source yourself, modifier-only switching |
+| Fallbacks | The input source for every keyboard without one of its own |
+| Updates | Sparkle's automatic daily check on/off, and Check Now |
+| Status | Permission, keyboard detection, current keyboard and source, last action and error |
 
 ## Troubleshooting
 
-**Nothing switches.** Check the menu bar icon: it shows whether the permission is granted and whether the monitor is running. Auto-switch must be enabled and not paused, and the target input source must still be enabled in System Settings → Keyboard → Input Sources.
+**Nothing switches.** Open the menu bar menu: it shows which keyboard you are typing on, what it maps to, and whether InputPilot is keeping a layout you chose yourself. Diagnostics shows the permission and keyboard detection. Auto-switch must be enabled and not paused, and the target input source must still be enabled in System Settings → Keyboard → Input Sources.
 
-**Permission granted but nothing happens.** macOS applies Input Monitoring on the next launch. Quit InputPilot and open it again.
+**Permission granted but nothing happens.** macOS applies Input Monitoring only to a fresh start. Click **Relaunch InputPilot** in the welcome window or in Settings → Status.
+
+**My layout changes back / does not change back.** That is the manual-change setting in Settings → Switching. By default a layout you pick yourself is kept until you type on another keyboard. macOS's own "Automatically switch to a document's input source" also counts as a change you made.
+
+**Karabiner-Elements.** For every keyboard whose events Karabiner-Elements modifies, it takes exclusive access and re-sends the keys from its own virtual keyboard, so InputPilot cannot see which physical keyboard you used. In Karabiner-Elements → Devices, turn off "Modify events" for each keyboard InputPilot should tell apart, then relaunch InputPilot.
 
 **A keyboard is not detected.** Press a key on it — mouse movement is not enough. InputPilot only learns about a keyboard once it produces a key event.
 
@@ -85,7 +92,7 @@ Auto-switching only runs when it is enabled and not paused.
 
 ## What it stores
 
-Settings live in `UserDefaults`: the auto-switch and modifier-only flags, the pause timestamp, the global fallback, your device mappings, and a schema migration flag. The last switch and the debug log are in memory only and disappear when you quit. If stored mappings ever fail to decode, the raw data is preserved under a `.corrupted` key rather than being overwritten.
+Settings live in `UserDefaults`: the auto-switch and modifier-only flags, the manual-change setting, the pause timestamp, the global fallback, your device mappings, whether the first run is finished, and a schema migration flag. Open at login is registered with macOS itself (System Settings → General → Login Items). The last switch and the debug log are in memory only and disappear when you quit. If stored mappings ever fail to decode, the raw data is preserved under a `.corrupted` key rather than being overwritten.
 
 ## Requirements
 

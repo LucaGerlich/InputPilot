@@ -12,6 +12,12 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
     var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)?
 
     private(set) var isRunning = false
+    /// Keep running when another app (Karabiner-Elements) holds a keyboard
+    /// exclusively. Only safe once Input Monitoring is known to apply to this
+    /// process: IOHIDManagerOpen reports the first per-device error of an
+    /// unordered set, so right after a fresh grant this error could mask the
+    /// permission failure that a relaunch fixes.
+    var allowsPartialOpen = false
     private(set) var lastStartError: IOReturn?
 
 #if DEBUG
@@ -51,7 +57,8 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         )
 
         let openResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        guard openResult == kIOReturnSuccess else {
+        let isPartialOpen = openResult == kIOReturnExclusiveAccess && allowsPartialOpen
+        guard openResult == kIOReturnSuccess || isPartialOpen else {
             IOHIDManagerUnscheduleFromRunLoop(
                 manager,
                 CFRunLoopGetMain(),
@@ -62,10 +69,10 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
             return false
         }
 
-        lastStartError = nil
+        lastStartError = isPartialOpen ? openResult : nil
         self.manager = manager
         self.isRunning = true
-        debugLog("HID monitor started.")
+        debugLog(isPartialOpen ? "HID monitor started without one or more held keyboards." : "HID monitor started.")
         return true
     }
 
@@ -93,6 +100,14 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
 
     deinit {
         stop()
+    }
+
+    func connectedDevices() -> [ActiveKeyboardDevice] {
+        guard let manager, let devices = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
+            return []
+        }
+
+        return devices.map(makeActiveDevice(from:))
     }
 
     private func handleInputValue(_ value: IOHIDValue) {
@@ -204,6 +219,10 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
             return "HID monitor start blocked: process is not privileged (kIOReturnNotPrivileged)."
         case kIOReturnNoDevice:
             return "No matching keyboard HID device available."
+        case kIOReturnExclusiveAccess:
+            // A running manager never re-opens a keyboard that is released
+            // later, hence the relaunch.
+            return "Another app, such as Karabiner-Elements, has exclusive access to a keyboard, so InputPilot cannot tell when you type on it. In Karabiner-Elements → Devices, turn off \u{201C}Modify events\u{201D} for each keyboard InputPilot should tell apart, then relaunch InputPilot."
         default:
             return "HID monitor start failed with IOReturn \(lastStartError)."
         }

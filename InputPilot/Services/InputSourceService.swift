@@ -25,7 +25,7 @@ final class InputSourceService: InputSourceServicing {
             kTISPropertyInputSourceIsEnabled as String: kCFBooleanTrue as Any,
             kTISPropertyInputSourceID as String: id
         ]
-        return !inputSources(matching: filter).isEmpty
+        return inputSources(matching: filter).contains(where: isKeyboardInputSource)
     }
 
     func currentInputSourceId() -> String? {
@@ -64,7 +64,7 @@ final class InputSourceService: InputSourceServicing {
     private func makeInputSourceInfos(from sources: [TISInputSource]) -> [InputSourceInfo] {
         var infos: [InputSourceInfo] = []
 
-        for source in sources {
+        for source in sources where isKeyboardInputSource(source) {
             guard let id = stringProperty(for: source, key: kTISPropertyInputSourceID) else {
                 continue
             }
@@ -77,6 +77,15 @@ final class InputSourceService: InputSourceServicing {
         return infos.sorted { lhs, rhs in
             lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    /// Excludes palette sources (Emoji & Symbols, Dictation, Press and Hold):
+    /// they are "selectable" but not layouts, so as a mapping target they open
+    /// a panel on every switch and never become the current keyboard source.
+    /// Filtered here rather than in the TIS query, which with a category key
+    /// also returns orphaned modes of disabled input methods.
+    private func isKeyboardInputSource(_ source: TISInputSource) -> Bool {
+        stringProperty(for: source, key: kTISPropertyInputSourceCategory) == (kTISCategoryKeyboardInputSource as String)
     }
 
     private func inputSources(matching filter: [String: Any]?) -> [TISInputSource] {
