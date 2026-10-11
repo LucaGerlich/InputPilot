@@ -30,7 +30,7 @@ struct AppStateFailurePathTests {
 
         #expect(!keyboardMonitor.isRunning)
         #expect(appState.status.permissionStatus == .denied)
-        #expect(appState.permissionWarningMessage != nil)
+        #expect(appState.permissionWarningMessage == "Input Monitoring permission is denied or was revoked.")
         #expect(appState.activeKeyboardDevice == nil)
         #expect(appState.status.activeKeyboard == "none")
     }
