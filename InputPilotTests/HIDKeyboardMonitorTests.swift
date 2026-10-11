@@ -2,6 +2,7 @@ import IOKit.hid
 import Testing
 @testable import InputPilot
 
+@MainActor
 struct HIDKeyboardMonitorTests {
     @Test(arguments: Array(UInt32(kHIDUsage_KeyboardLeftControl)...UInt32(kHIDUsage_KeyboardRightGUI)))
     func modifierUsagesAreModifiers(usage: UInt32) {

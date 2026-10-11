@@ -14,4 +14,10 @@ final class UpdaterService {
 	func checkForUpdates() {
 		updaterController.checkForUpdates(nil)
 	}
+
+	/// Sparkle's own setting: on, it asks GitHub about once a day.
+	var automaticallyChecksForUpdates: Bool {
+		get { updaterController.updater.automaticallyChecksForUpdates }
+		set { updaterController.updater.automaticallyChecksForUpdates = newValue }
+	}
 }

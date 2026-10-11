@@ -535,6 +535,79 @@ struct AppStateAutoSwitchTests {
         #expect(appState.activeKeyboardDevice == secondDevice)
     }
 
+    @Test
+    func twoKeyboardsOfTheSameModelAreMappedSeparately() async throws {
+        let suiteName = "AppStateAutoSwitchTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw AppStateTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let usKeyboard = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 641,
+            productName: "Magic Keyboard",
+            transport: "USB",
+            locationId: 100
+        )
+        let germanKeyboard = ActiveKeyboardDevice(
+            vendorId: 1452,
+            productId: 641,
+            productName: "Magic Keyboard",
+            transport: "USB",
+            locationId: 200
+        )
+
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        keyboardMonitor.connected = [usKeyboard, germanKeyboard]
+        let inputSourceService = MockInputSourceService()
+        inputSourceService.enabledSources = [
+            InputSourceInfo(id: "com.apple.keylayout.US", name: "U.S.", isSelectable: true),
+            InputSourceInfo(id: "com.apple.keylayout.German", name: "German", isSelectable: true)
+        ]
+        inputSourceService.currentInputSourceIdValue = "com.apple.keylayout.German"
+
+        let clock = ImmediateClock()
+        let appState = AppState(
+            permissionService: MockPermissionService(accessType: kIOHIDAccessTypeGranted),
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: inputSourceService,
+            mappingStore: MockMappingStore(),
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: clock
+        )
+
+        // Detected the way a user would: a key press on each keyboard.
+        keyboardMonitor.emit(usKeyboard)
+        await waitFor { appState.knownDeviceKeys.count == 1 }
+        keyboardMonitor.emit(germanKeyboard)
+        await waitFor { appState.knownDeviceKeys.count == 2 }
+        #expect(appState.knownDeviceKeys.count == 2)
+
+        // Until it has its own mapping, the second keyboard inherits the first's.
+        appState.setMapping(for: KeyboardDeviceKey(device: usKeyboard), inputSourceId: "com.apple.keylayout.US")
+        keyboardMonitor.emit(germanKeyboard)
+        await waitFor { inputSourceService.selectCalls.count == 1 }
+        #expect(inputSourceService.selectCalls == ["com.apple.keylayout.US"])
+
+        clock.advance(by: .seconds(2))
+        appState.setMapping(for: KeyboardDeviceKey(device: germanKeyboard), inputSourceId: "com.apple.keylayout.German")
+        await waitFor { inputSourceService.selectCalls.count == 2 }
+
+        clock.advance(by: .seconds(2))
+        keyboardMonitor.emit(usKeyboard)
+        await waitFor { inputSourceService.selectCalls.count == 3 }
+
+        #expect(inputSourceService.selectCalls == [
+            "com.apple.keylayout.US",
+            "com.apple.keylayout.German",
+            "com.apple.keylayout.US"
+        ])
+    }
+
     private func waitFor(
         maxAttempts: Int = 300,
         condition: @escaping () -> Bool

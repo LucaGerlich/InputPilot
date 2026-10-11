@@ -5,6 +5,7 @@ import IOKit.hid
 @MainActor
 final class MockPermissionService: PermissionServicing {
     var accessType: IOHIDAccessType
+    private(set) var requestCount = 0
 
     init(accessType: IOHIDAccessType) {
         self.accessType = accessType
@@ -15,6 +16,7 @@ final class MockPermissionService: PermissionServicing {
     }
 
     func requestInputMonitoring() -> Bool {
+        requestCount += 1
         accessType = kIOHIDAccessTypeGranted
         return true
     }
@@ -29,6 +31,11 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
     private var onEvent: ((ActiveKeyboardDevice, KeyboardEventKind) -> Void)?
 
     var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)?
+    var connected: [ActiveKeyboardDevice] = []
+    var allowsPartialOpen = false
+    /// Models IOHIDManagerOpen returning kIOReturnExclusiveAccess because
+    /// another app (Karabiner-Elements) holds one of the keyboards.
+    var exclusiveAccessMessage: String?
     var startResult = true
     var isRunning = false
     var lastStartErrorMessage: String?
@@ -38,6 +45,12 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
     func start(onEvent: @escaping (ActiveKeyboardDevice, KeyboardEventKind) -> Void) -> Bool {
         self.onEvent = onEvent
         startCallCount += 1
+
+        if let exclusiveAccessMessage {
+            lastStartErrorMessage = exclusiveAccessMessage
+            isRunning = allowsPartialOpen
+            return allowsPartialOpen
+        }
 
         if startResult {
             isRunning = true
@@ -49,6 +62,10 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
 
     func stop() {
         isRunning = false
+    }
+
+    func connectedDevices() -> [ActiveKeyboardDevice] {
+        connected
     }
 
     func emit(_ device: ActiveKeyboardDevice, kind: KeyboardEventKind = .keyDown(isModifier: false)) {
@@ -66,6 +83,9 @@ final class MockInputSourceService: InputSourceServicing {
     var allSources: [InputSourceInfo] = []
     var currentInputSourceIdValue: String?
     var selectInputSourceResult = true
+    /// False models TIS reporting success without the source actually
+    /// changing, a known macOS behaviour with some CJK input methods.
+    var selectTakesEffect = true
     private(set) var selectCalls: [String] = []
 
     func listEnabledInputSources() -> [InputSourceInfo] {
@@ -91,7 +111,7 @@ final class MockInputSourceService: InputSourceServicing {
     func selectInputSource(id: String) -> Bool {
         selectCalls.append(id)
 
-        if selectInputSourceResult {
+        if selectInputSourceResult, selectTakesEffect {
             currentInputSourceIdValue = id
         }
 
@@ -179,5 +199,33 @@ final class ImmediateClock: ClockProviding {
         let seconds = Double(components.seconds)
         let attoseconds = Double(components.attoseconds) / 1_000_000_000_000_000_000
         return seconds + attoseconds
+    }
+}
+
+/// Holds every `sleep` until the test releases it, so a test can act inside
+/// the debounce window - between a switch being scheduled and carried out.
+@MainActor
+final class GatedClock: ClockProviding {
+    var now = Date()
+    private var sleepers: [CheckedContinuation<Void, Never>] = []
+
+    var hasSleepers: Bool {
+        !sleepers.isEmpty
+    }
+
+    func sleep(for duration: Duration) async throws {
+        await withCheckedContinuation { continuation in
+            sleepers.append(continuation)
+        }
+    }
+
+    func releaseSleepers() {
+        let pending = sleepers
+        sleepers = []
+        pending.forEach { $0.resume() }
+    }
+
+    func advance(by seconds: TimeInterval) {
+        now = now.addingTimeInterval(seconds)
     }
 }

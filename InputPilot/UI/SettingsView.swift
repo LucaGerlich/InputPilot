@@ -1,117 +1,26 @@
 import SwiftUI
 
 struct SettingsView: View {
-    private let noAutoSwitchTag = "__NO_AUTO_SWITCH__"
+    let updaterService: UpdaterService
+
+    private let notMappedTag = "__NOT_MAPPED__"
     private let noFallbackTag = "__NO_FALLBACK__"
 
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var loginItem: LoginItemController
+    @State private var checksForUpdatesAutomatically = true
 
     var body: some View {
         Form {
-            Section {
-                Toggle(
-                    "Pause Auto-Switch",
-                    isOn: Binding(
-                        get: { appState.isAutoSwitchPaused },
-                        set: { appState.setAutoSwitchPaused($0) }
-                    )
-                )
-
-                Toggle(
-                    "Switch on modifier-only key presses",
-                    isOn: Binding(
-                        get: { appState.switchOnModifierOnlyKeys },
-                        set: { appState.setSwitchOnModifierOnlyKeys($0) }
-                    )
-                )
-
-                LabeledContent("Last action", value: appState.lastAutoSwitchAction)
-
-                if let error = appState.lastAutoSwitchError {
-                    LabeledContent("Error") {
-                        Text(error).foregroundStyle(.red)
-                    }
-                }
-            } header: {
-                Text("Auto-Switch")
-            } footer: {
-                Text("When \"Switch on modifier-only key presses\" is off, a lone Shift, Control, Option, or Command press does not change the input source. Any other key, including the Tab in Cmd+Tab, counts as typing on that keyboard.")
+            if appState.hasMappingConflicts {
+                conflictsSection
             }
 
-            Section("Input Monitoring") {
-                statusRow(appState.permissionLine)
-                statusRow(appState.activeKeyboardLine)
-                statusRow(appState.activeInputSourceLine)
-            }
-
-            Section("Input Sources") {
-                LabeledContent("Current", value: appState.currentInputSourceName ?? "none")
-                LabeledContent("Identifier", value: appState.currentInputSourceId ?? "none")
-            }
-
-            Section {
-                if appState.selectableInputSources.isEmpty {
-                    Text("No selectable input sources available.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Picker("Global Fallback", selection: globalFallbackSelectionBinding) {
-                        Text("No global fallback")
-                            .tag(noFallbackTag)
-
-                        ForEach(appState.selectableInputSources) { inputSource in
-                            Text(inputSource.name)
-                                .tag(inputSource.id)
-                        }
-                    }
-
-                    Button("Use current input source as global fallback") {
-                        appState.useCurrentInputSourceAsGlobalFallback()
-                    }
-                    .disabled(appState.currentInputSourceId == nil)
-                }
-            } header: {
-                Text("Fallbacks")
-            } footer: {
-                Text("Used when a device has no specific mapping.")
-            }
-
-            Section("Conflicts") {
-                if appState.mappingConflicts.isEmpty {
-                    Label("No mapping conflicts detected.", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(appState.mappingConflicts) { conflict in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label {
-                                Text("\(appState.deviceTitle(for: conflict.deviceKey)) → \(appState.mappingConflictSourceName(for: conflict))")
-                            } icon: {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                            }
-
-                            Text(appState.mappingConflictReasonText(for: conflict))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-
-                            Button("Fix…") {
-                                appState.openMappingFix(for: conflict.deviceKey)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-            }
-
-            Section("Keyboard Device Mappings") {
-                if appState.knownDeviceKeys.isEmpty {
-                    Text("No keyboard devices recognized yet. Press a key on a keyboard to detect it.")
-                        .foregroundStyle(.secondary)
-                }
-
-                ForEach(orderedDeviceKeys, id: \.self) { deviceKey in
-                    deviceMappingRow(for: deviceKey)
-                }
-            }
+            keyboardsSection
+            switchingSection
+            fallbackSection
+            updatesSection
+            statusSection
 
             AboutSection()
         }
@@ -119,18 +28,211 @@ struct SettingsView: View {
         .frame(minWidth: 480, minHeight: 520)
         .onAppear {
             appState.refreshInputSourcesNow()
+            loginItem.refresh()
+            checksForUpdatesAutomatically = updaterService.automaticallyChecksForUpdates
+        }
+        .onChange(of: checksForUpdatesAutomatically) { newValue in
+            updaterService.automaticallyChecksForUpdates = newValue
         }
     }
 
+    // MARK: - Sections
+
+    private var conflictsSection: some View {
+        Section("Needs Attention") {
+            ForEach(appState.mappingConflicts) { conflict in
+                VStack(alignment: .leading, spacing: 6) {
+                    Label {
+                        Text("\(appState.deviceTitle(for: conflict.deviceKey)) → \(appState.mappingConflictSourceName(for: conflict))")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
+
+                    Text(appState.mappingConflictReasonText(for: conflict))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Button("Choose Another Input Source") {
+                        appState.openMappingFix(for: conflict.deviceKey)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    private var keyboardsSection: some View {
+        Section {
+            if appState.knownDeviceKeys.isEmpty {
+                Text("Type a few keys on each keyboard you use, and it appears here.")
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(orderedDeviceKeys, id: \.self) { deviceKey in
+                deviceMappingRow(for: deviceKey)
+            }
+        } header: {
+            Text("Keyboards")
+        } footer: {
+            if appState.knownDeviceKeys.count < 2 {
+                Text("InputPilot switches when you move between keyboards. Give this one an input source now; the next keyboard you type on appears here too.")
+            }
+        }
+    }
+
+    private var switchingSection: some View {
+        Section {
+            Toggle(
+                "Automatic switching",
+                isOn: Binding(
+                    get: { appState.autoSwitchEnabled },
+                    set: { appState.setAutoSwitchEnabled($0) }
+                )
+            )
+
+            if let reason = appState.autoSwitchOffReason {
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Toggle(
+                "Open InputPilot at login",
+                isOn: Binding(
+                    get: { loginItem.isEnabled },
+                    set: { loginItem.setEnabled($0) }
+                )
+            )
+
+            if loginItem.status == .requiresApproval {
+                LabeledContent("Waiting for your approval in System Settings") {
+                    Button("Open Login Items…") {
+                        loginItem.openSystemSettingsLoginItems()
+                    }
+                }
+            }
+
+            if let error = loginItem.lastError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            Picker(
+                "When you change the input source yourself",
+                selection: Binding(
+                    get: { appState.manualChangePolicy },
+                    set: { appState.setManualChangePolicy($0) }
+                )
+            ) {
+                ForEach(ManualChangePolicy.allCases) { policy in
+                    Text(policy.title)
+                        .tag(policy)
+                }
+            }
+
+            Toggle(
+                "Switch on modifier-only key presses",
+                isOn: Binding(
+                    get: { appState.switchOnModifierOnlyKeys },
+                    set: { appState.setSwitchOnModifierOnlyKeys($0) }
+                )
+            )
+        } header: {
+            Text("Switching")
+        } footer: {
+            Text("A change counts as yours when anything but InputPilot makes it: ⌃Space, the input menu, Undo, or macOS's own \u{201C}Automatically switch to a document's input source\u{201D}. A lone Shift, Control, Option, or Command press only switches when modifier-only switching is on; any other key, including the Tab in Cmd+Tab, counts as typing on that keyboard.")
+        }
+    }
+
+    private var fallbackSection: some View {
+        Section {
+            if appState.selectableInputSources.isEmpty {
+                Text("No selectable input sources available.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("Every other keyboard", selection: globalFallbackSelectionBinding) {
+                    Text("No fallback")
+                        .tag(noFallbackTag)
+
+                    ForEach(appState.selectableInputSources) { inputSource in
+                        Text(inputSource.name)
+                            .tag(inputSource.id)
+                    }
+                }
+
+                Button("Use Current Input Source for Every Other Keyboard") {
+                    appState.useCurrentInputSourceAsGlobalFallback()
+                }
+                .disabled(appState.currentInputSourceId == nil)
+            }
+        } header: {
+            Text("Fallbacks")
+        } footer: {
+            Text("A keyboard's own fallback is used when it has no input source or its input source was removed. This one covers every keyboard without either.")
+        }
+    }
+
+    private var updatesSection: some View {
+        Section {
+            Toggle("Check for updates automatically", isOn: $checksForUpdatesAutomatically)
+
+            Button("Check Now…") {
+                updaterService.checkForUpdates()
+            }
+        } header: {
+            Text("Updates")
+        } footer: {
+            Text("Asks GitHub about once a day whether a newer version exists. Nothing about your keyboards or typing is sent.")
+        }
+    }
+
+    private var statusSection: some View {
+        Section("Status") {
+            statusRow(appState.permissionLine)
+            statusRow(appState.monitorLine)
+            statusRow(appState.activeKeyboardLine)
+            statusRow(appState.activeInputSourceLine)
+            LabeledContent("Last action", value: appState.lastAutoSwitchAction)
+
+            if let error = appState.lastAutoSwitchError {
+                LabeledContent("Error") {
+                    Text(error).foregroundStyle(.red)
+                }
+            }
+
+            if let hint = appState.keyboardMonitorHint {
+                Text(hint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !appState.isInputMonitoringGranted {
+                Button("Open Input Monitoring Settings…") {
+                    appState.openInputMonitoringSettings()
+                }
+            } else if !appState.isKeyboardMonitorRunning || appState.monitorHasPartialAccess {
+                Button("Relaunch InputPilot") {
+                    appState.relaunch()
+                }
+            }
+        }
+    }
+
+    // MARK: - Rows
+
     @ViewBuilder
     private func deviceMappingRow(for deviceKey: KeyboardDeviceKey) -> some View {
+        let title = appState.deviceTitle(for: deviceKey)
+
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(appState.deviceTitle(for: deviceKey))
+                Text(title)
                     .font(.headline)
 
                 if appState.conflictFixTargetDeviceKey == deviceKey {
-                    Text("Fix target")
+                    Text("Needs a new input source")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 6)
@@ -147,18 +249,19 @@ struct SettingsView: View {
                 Text("No selectable input sources available.")
                     .foregroundStyle(.secondary)
             } else {
-                Picker("Input Source", selection: mappingSelectionBinding(for: deviceKey)) {
-                    Text("No automatic switch")
-                        .tag(noAutoSwitchTag)
+                Picker("Input source", selection: mappingSelectionBinding(for: deviceKey)) {
+                    Text("Not mapped")
+                        .tag(notMappedTag)
 
                     ForEach(appState.selectableInputSources) { inputSource in
                         Text(inputSource.name)
                             .tag(inputSource.id)
                     }
                 }
+                .accessibilityLabel("Input source for \(title)")
 
-                Picker("Device Fallback (Advanced)", selection: perDeviceFallbackSelectionBinding(for: deviceKey)) {
-                    Text("No device fallback")
+                Picker("Fallback", selection: perDeviceFallbackSelectionBinding(for: deviceKey)) {
+                    Text("No fallback")
                         .tag(noFallbackTag)
 
                     ForEach(appState.selectableInputSources) { inputSource in
@@ -166,11 +269,13 @@ struct SettingsView: View {
                             .tag(inputSource.id)
                     }
                 }
+                .accessibilityLabel("Fallback input source for \(title)")
             }
 
-            Button("Forget device", role: .destructive) {
+            Button("Forget This Keyboard", role: .destructive) {
                 appState.forgetDevice(deviceKey)
             }
+            .accessibilityLabel("Forget \(title)")
         }
         .padding(.vertical, 4)
     }
@@ -181,6 +286,8 @@ struct SettingsView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    // MARK: - Bindings
 
     private var orderedDeviceKeys: [KeyboardDeviceKey] {
         guard let fixTarget = appState.conflictFixTargetDeviceKey else {
@@ -200,17 +307,13 @@ struct SettingsView: View {
             get: {
                 guard let mappedInputSourceId = appState.mappedInputSourceId(for: deviceKey),
                       isSelectableInputSourceId(mappedInputSourceId) else {
-                    return noAutoSwitchTag
+                    return notMappedTag
                 }
 
                 return mappedInputSourceId
             },
             set: { selection in
-                if selection == noAutoSwitchTag {
-                    appState.setMapping(for: deviceKey, inputSourceId: nil)
-                } else {
-                    appState.setMapping(for: deviceKey, inputSourceId: selection)
-                }
+                appState.setMapping(for: deviceKey, inputSourceId: selection == notMappedTag ? nil : selection)
             }
         )
     }
@@ -226,11 +329,7 @@ struct SettingsView: View {
                 return globalFallbackInputSourceId
             },
             set: { selection in
-                if selection == noFallbackTag {
-                    appState.setGlobalFallbackInputSourceId(nil)
-                } else {
-                    appState.setGlobalFallbackInputSourceId(selection)
-                }
+                appState.setGlobalFallbackInputSourceId(selection == noFallbackTag ? nil : selection)
             }
         )
     }
@@ -246,11 +345,7 @@ struct SettingsView: View {
                 return perDeviceFallbackInputSourceId
             },
             set: { selection in
-                if selection == noFallbackTag {
-                    appState.setPerDeviceFallback(for: deviceKey, inputSourceId: nil)
-                } else {
-                    appState.setPerDeviceFallback(for: deviceKey, inputSourceId: selection)
-                }
+                appState.setPerDeviceFallback(for: deviceKey, inputSourceId: selection == noFallbackTag ? nil : selection)
             }
         )
     }

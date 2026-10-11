@@ -335,6 +335,10 @@ struct AppStateFailurePathTests {
             appSettingsStore: AppSettingsStore(defaults: defaults),
             clock: clock
         )
+        // Under the default policy a change made outside the app is respected.
+        // This test guards the fresh read itself (a stale cache once suppressed
+        // needed switches), so it uses the policy that always switches back.
+        appState.setManualChangePolicy(.revertOnNextKeyPress)
 
         keyboardMonitor.emit(device)
         await waitFor {
