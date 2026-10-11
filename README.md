@@ -37,7 +37,7 @@ The app is signed with a Developer ID certificate and notarized by Apple, so it 
 
 To tell your keyboards apart, InputPilot has to see that *a* key was pressed and on *which* device. macOS puts that behind the Input Monitoring permission.
 
-It never records what you type. The HID callback keeps exactly two things — the device that sent the event, and whether the key was a modifier. The key's usage code is read only to compute that second value and is then discarded: it is never stored, logged or transmitted, and no character or text is derived from it. Nothing you type is sent off your Mac: the only network traffic is Sparkle's update check (automatically once a day, or when you choose Check for Updates), and Sparkle is the only third-party dependency.
+It never records what you type. The HID callback keeps exactly two things — the device that sent the event, and whether the key was a modifier. The key's usage code is read only to compute that second value and is then discarded: it is never stored, logged or transmitted, and no character or text is derived from it. Nothing you type is sent off your Mac: the only network traffic is Sparkle's update check (automatically once a day, or when you choose Check for Updates) and the download of any update you accept. Sparkle is the only third-party dependency.
 
 See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report a vulnerability.
 
@@ -49,7 +49,7 @@ See [SECURITY.md](SECURITY.md) for the full privacy statement and how to report 
 - **Pause** — silence auto-switching for 15 or 60 minutes when it would get in the way.
 - **Conflict detection** — spots mappings that point at an input source you have since removed or disabled, and offers to fix them.
 - **Stable device identity** — keyboards are matched on vendor, product, transport and name, so unplugging and replugging (or moving to another USB port) keeps your mapping.
-- **No flapping** — a 400 ms debounce and a 1.5 s cooldown stop rapid switching, and modifier-only presses (a lone ⇧ or ⌘ during ⌘-Tab) are ignored by default.
+- **No flapping** — a 400 ms debounce and a 1.5 s cooldown stop rapid switching, and a lone modifier press (⇧, ⌘, ⌥ or ⌃ on its own) is ignored by default. Any other key — including the Tab in ⌘-Tab — counts as typing on that keyboard.
 - **Debug log** — an in-app log window you can copy or export when reporting a bug. It contains device and status information only, never typed text.
 
 ## How it works

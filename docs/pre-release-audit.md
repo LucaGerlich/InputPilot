@@ -5,7 +5,7 @@
 Audited: 2026-08-18 · Scope: full repo · Method: 4 specialized reviews (correctness/concurrency, security/privacy, distribution, tests) + empirical verification
 Verification baseline at audit time: **build ✓ · all 30 tests pass ✓ · no third-party dependencies · security review clean (no keystroke logging, no network calls)**
 
-Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pass; Sparkle 2.9.6 was added deliberately as the update mechanism (finding H3) — its update checks are now the app's only network activity. *(Correction, 2026-10-11: those checks are automatic, about once a day, as well as user-initiated — see [post-launch-audit.md](post-launch-audit.md).)* Finding texts below are preserved as written at audit time; checkboxes track resolution.
+Post-hardening status (2026-08-18, branch `release-hardening`): 33 unit tests pass; Sparkle 2.9.6 was added deliberately as the update mechanism (finding H3) — its update checks are now the app's only network activity. *(Correction, 2026-10-11: those checks are automatic, about once a day, as well as user-initiated.)* Finding texts below are preserved as written at audit time; checkboxes track resolution.
 
 ## Summary
 

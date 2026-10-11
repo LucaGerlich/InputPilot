@@ -15,20 +15,20 @@ Nothing else leaves that callback. The key's usage code is read inside it, solel
 
 Settings and keyboard mappings live in `UserDefaults` (`com.lucagerlich.InputPilot`):
 
-- for each keyboard you have used: its identifiers (vendor ID, product ID, transport, product name, location) and the input source mapped to it
+- for each keyboard you have mapped or given a fallback: its identifiers (vendor ID, product ID, transport, product name, location) and the input source mapped to it
 - your fallbacks, the auto-switch and modifier-only settings, and the pause timestamp
 - a schema migration flag
 - only if stored mappings ever fail to decode: a `.corrupted` backup of that data, so it is not lost
 
 Sparkle keeps its own bookkeeping in the same place: when it last checked for updates, whether the app has launched before, and a random number it uses for staged rollouts. No key or typing data is stored anywhere.
 
-The debug log is an in-memory ring buffer of at most 200 entries, holding device identifiers, permission state, input source names, and errors. It is never written to disk unless you explicitly export it, and only reaches the clipboard if you copy it. As each entry is recorded, a filter replaces the words `keycode`, `typedtext`, `characters`, `appcontents` and `keystroke` with `[redacted]`. That filter is a tripwire, not the guarantee — the guarantee is that no code path sends key data to the log in the first place.
+The debug log is an in-memory ring buffer of at most 200 entries, holding device identifiers, permission state, input source names, and errors. It is never written to disk unless you explicitly export it, and only reaches the clipboard if you copy it. As each entry is recorded, a filter replaces any occurrence of `keycode`, `typedtext`, `characters`, `appcontents` and `keystroke` with `[redacted]`. That filter is a tripwire, not the guarantee — the guarantee is that no code path sends key data to the log in the first place.
 
 ## What leaves your Mac
 
 Update checks against the appcast at `raw.githubusercontent.com` — automatically about once a day, and whenever you choose Check for Updates — and the download itself when you accept an update. Each check is an ordinary HTTPS request, so GitHub sees your IP address and a user agent naming the app and Sparkle versions. Nothing else is sent. There is no telemetry, no analytics, and no crash reporter.
 
-Sparkle verifies every update before installing it: an EdDSA signature over the downloaded archive, checked against the public key built into the app, and a code-signature check that the new app is signed by the same Developer ID team. Each release is also notarized by Apple.
+Sparkle verifies every update before installing it: an EdDSA signature over the downloaded archive, checked against the public key built into the app, and a check that the new app carries a valid code signature. Each release is also notarized by Apple.
 
 ## Supply chain
 

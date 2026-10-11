@@ -740,7 +740,7 @@ final class AppState: ObservableObject {
             )
         }
 
-        // A lone modifier press (Cmd+Tab, shortcut chords) still updates the
+        // A lone modifier press (e.g. the Cmd before a shortcut) still updates the
         // active-device display above, but only triggers a switch when the user
         // opted in. Settings-driven re-evaluations use .deviceStabilized and
         // are never gated here.
