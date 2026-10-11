@@ -94,6 +94,13 @@ if [[ -n "$PUBLISHED_BUILD" && "$BUILD_NUMBER" -le "$PUBLISHED_BUILD" ]]; then
     fail "CURRENT_PROJECT_VERSION is $BUILD_NUMBER but the appcast already advertises build $PUBLISHED_BUILD. Bump it."
 fi
 
+# UI tests need an unlocked desktop session and run on CI instead. Run before
+# anything is created, so a failure leaves nothing to clean up.
+echo "==> Running unit tests"
+xcodebuild -quiet test -project InputPilot.xcodeproj -scheme InputPilot -destination 'platform=macOS' \
+    -only-testing:InputPilotTests CODE_SIGN_IDENTITY=- \
+    || fail "unit tests failed."
+
 echo "Releasing $VERSION (build $BUILD_NUMBER) from $(git rev-parse --short HEAD)"
 mkdir -p "$RELEASE_DIR"
 
@@ -104,12 +111,6 @@ xcodebuild -resolvePackageDependencies -project InputPilot.xcodeproj -scheme Inp
 SPARKLE_BIN="$SOURCE_PACKAGES/artifacts/sparkle/Sparkle/bin"
 [[ -x "$SPARKLE_BIN/generate_appcast" && -x "$SPARKLE_BIN/sign_update" ]] \
     || fail "Sparkle's generate_appcast and sign_update not found in $SPARKLE_BIN."
-
-# UI tests need an unlocked desktop session and run on CI instead.
-echo "==> Running unit tests"
-xcodebuild -quiet test -project InputPilot.xcodeproj -scheme InputPilot -destination 'platform=macOS' \
-    -only-testing:InputPilotTests CODE_SIGN_IDENTITY=- \
-    || fail "unit tests failed."
 
 echo "==> Archiving Release build"
 xcodebuild -project InputPilot.xcodeproj \
@@ -172,11 +173,19 @@ spctl --assess --type open --context context:primary-signature -v "$DMG"
 # appcast: generate_appcast keeps the earlier items as they are, URLs
 # included, and adds this release. It signs the feed because the new build
 # requires a signed one. No deltas - each would be another asset to upload.
+# Release notes are embedded in the feed, so its signature covers them too.
 echo "==> Generating the signed Sparkle appcast"
 mkdir -p "$FEED_DIR"
 cp "$DMG" "$FEED_DIR/"
 cp appcast.xml "$FEED_DIR/appcast.xml"
-"$SPARKLE_BIN/generate_appcast" --download-url-prefix "$DOWNLOAD_PREFIX" --maximum-deltas 0 "$FEED_DIR"
+RELEASE_NOTES="Scripts/release-notes/$VERSION.md"
+if [[ -f "$RELEASE_NOTES" ]]; then
+    cp "$RELEASE_NOTES" "$FEED_DIR/InputPilot-$VERSION.md"
+else
+    echo "WARNING: no $RELEASE_NOTES; the update dialog will show no release notes." >&2
+fi
+"$SPARKLE_BIN/generate_appcast" --download-url-prefix "$DOWNLOAD_PREFIX" --maximum-deltas 0 \
+    --embed-release-notes "$FEED_DIR"
 cp "$FEED_DIR/appcast.xml" appcast.xml
 
 # generate_appcast only warns when it cannot sign (key missing, Keychain
@@ -194,7 +203,8 @@ ns = {"sparkle": "http://www.andymatuschak.org/xml-namespaces/sparkle"}
 path, version = sys.argv[1], sys.argv[2]
 for item in ET.parse(path).getroot().iter("item"):
     if item.findtext("sparkle:shortVersionString", namespaces=ns) == version:
-        print(item.find("enclosure").get("{%s}edSignature" % ns["sparkle"]))
+        signature = item.find("enclosure").get("{%s}edSignature" % ns["sparkle"])
+        print(signature or "")
         break
 PY
 )"
