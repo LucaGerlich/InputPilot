@@ -114,6 +114,42 @@ struct AppStateFailurePathTests {
     }
 
     @Test
+    func repeatedMonitorStartFailureIsLoggedOnce() async throws {
+        let suiteName = "AppStateFailurePathTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw FailurePathTestError.failedToCreateUserDefaultsSuite
+        }
+
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        let keyboardMonitor = MockHIDKeyboardMonitor()
+        keyboardMonitor.startResult = false
+        keyboardMonitor.lastStartErrorMessage = "No matching keyboard HID device available."
+
+        let appState = AppState(
+            permissionService: MockPermissionService(accessType: kIOHIDAccessTypeGranted),
+            hidKeyboardMonitor: keyboardMonitor,
+            inputSourceService: MockInputSourceService(),
+            mappingStore: MockMappingStore(),
+            appSettingsStore: AppSettingsStore(defaults: defaults),
+            clock: ImmediateClock(),
+            permissionPollInterval: .milliseconds(10)
+        )
+
+        // The permission poll retries the start on every tick. The debug log
+        // that users attach to bug reports must not fill up with one line.
+        await waitFor {
+            keyboardMonitor.startCallCount >= 5
+        }
+
+        let monitorErrors = appState.debugLogEntries.filter { $0.category == "hid-monitor" && $0.level == .error }
+        #expect(keyboardMonitor.startCallCount >= 5)
+        #expect(monitorErrors.count == 1)
+    }
+
+    @Test
     func selectInputSourceFailureRecordsErrorWithoutArmingCooldown() async throws {
         let suiteName = "AppStateFailurePathTests.\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suiteName) else {
