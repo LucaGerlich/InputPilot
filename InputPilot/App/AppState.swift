@@ -755,7 +755,8 @@ final class AppState: ObservableObject {
         let observedDeviceKey = KeyboardDeviceKey(device: device)
         let canonicalDeviceKey = DeviceKeyResolver.canonicalKey(
             for: observedDeviceKey,
-            among: knownDeviceKeys
+            among: knownDeviceKeys,
+            connectedDevices: { [hidKeyboardMonitor] in hidKeyboardMonitor.connectedDevices() }
         )
         detectedDevicesByKey[canonicalDeviceKey] = device
 

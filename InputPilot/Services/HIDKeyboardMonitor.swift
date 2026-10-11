@@ -95,6 +95,14 @@ final class HIDKeyboardMonitor: HIDKeyboardMonitoring {
         stop()
     }
 
+    func connectedDevices() -> [ActiveKeyboardDevice] {
+        guard let manager, let devices = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else {
+            return []
+        }
+
+        return devices.map(makeActiveDevice(from:))
+    }
+
     private func handleInputValue(_ value: IOHIDValue) {
         guard IOHIDValueGetIntegerValue(value) > 0 else {
             return

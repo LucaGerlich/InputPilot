@@ -29,6 +29,7 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
     private var onEvent: ((ActiveKeyboardDevice, KeyboardEventKind) -> Void)?
 
     var onDeviceRemoved: ((ActiveKeyboardDevice) -> Void)?
+    var connected: [ActiveKeyboardDevice] = []
     var startResult = true
     var isRunning = false
     var lastStartErrorMessage: String?
@@ -49,6 +50,10 @@ final class MockHIDKeyboardMonitor: HIDKeyboardMonitoring {
 
     func stop() {
         isRunning = false
+    }
+
+    func connectedDevices() -> [ActiveKeyboardDevice] {
+        connected
     }
 
     func emit(_ device: ActiveKeyboardDevice, kind: KeyboardEventKind = .keyDown(isModifier: false)) {

@@ -61,16 +61,13 @@ enum DeviceKeyResolver {
     /// key itself when it is a keyboard InputPilot has not seen before.
     static func canonicalKey(
         for observedDeviceKey: KeyboardDeviceKey,
-        among existingKeys: [KeyboardDeviceKey]
+        among existingKeys: [KeyboardDeviceKey],
+        connectedDevices: () -> [ActiveKeyboardDevice]
     ) -> KeyboardDeviceKey {
         let primaryMatches = existingKeys.filter { $0.matchesPrimary(of: observedDeviceKey.fingerprint) }
 
         if let exactMatch = primaryMatches.first(where: { $0 == observedDeviceKey }) {
             return exactMatch
-        }
-
-        if primaryMatches.count == 1, let existingPrimaryMatch = primaryMatches.first {
-            return existingPrimaryMatch
         }
 
         if let observedLocationId = observedDeviceKey.locationId,
@@ -82,7 +79,23 @@ enum DeviceKeyResolver {
             return locationAgnosticKey
         }
 
-        return observedDeviceKey
+        guard !primaryMatches.isEmpty else {
+            return observedDeviceKey
+        }
+
+        // A known model shows up at a new location. If exactly one known key's
+        // recorded location no longer holds a keyboard of that model, that is
+        // the keyboard that moved. If every recorded location is still occupied,
+        // this is another keyboard of the same model and gets its own key.
+        // Only evaluated here, off the hot path of an already-known keyboard.
+        let connected = connectedDevices()
+        let vacatedKeys = primaryMatches.filter { key in
+            !connected.contains { device in
+                device.locationId == key.locationId && key.matchesPrimary(of: device.fingerprint)
+            }
+        }
+
+        return vacatedKeys.count == 1 ? vacatedKeys[0] : observedDeviceKey
     }
 
     /// Whether `deviceKey` stands for the keyboard currently being typed on.
